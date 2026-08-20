@@ -312,6 +312,10 @@ async function boot() {
   goTo(ROUTES.includes(initial) ? initial : 'setup');
   setSaveState('Saved');
 
+  // Tells the boot guard in index.html that everything loaded. Without this it
+  // shows a "could not start" message after a few seconds.
+  window.__QLA_BOOTED = true;
+
   const pupils = state.assessment.pupils.length;
   if (pupils) toast(`Welcome back — ${plural(pupils, 'pupil')} loaded.`, 'info', 3000);
 }
