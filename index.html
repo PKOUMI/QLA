@@ -1,0 +1,348 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>QLA — Question Level Analysis &amp; Feedback</title>
+<meta name="description" content="Set up an assessment, enter marks question by question, and send personalised feedback to a whole class in minutes.">
+<meta name="robots" content="noindex">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%234f46e5'/><text y='68' x='50' text-anchor='middle' font-size='52' font-family='system-ui' font-weight='700' fill='white'>Q</text></svg>">
+<link rel="stylesheet" href="css/styles.css">
+<script src="config.js"></script>
+</head>
+<body>
+
+<!-- ======================================================== HEADER / NAV -->
+<header class="app-header">
+  <a class="brand" href="#setup">
+    <span class="brand-mark" aria-hidden="true">QL</span>
+    <span class="brand-name">QLA<small>Question Level Analysis</small></span>
+  </a>
+
+  <nav class="steps" aria-label="Workflow">
+    <button class="step" data-goto="setup" type="button" aria-current="page">
+      <span class="step-num">1</span><span class="step-label">Set up</span>
+    </button>
+    <span class="step-sep" aria-hidden="true"></span>
+    <button class="step" data-goto="marksheet" type="button">
+      <span class="step-num">2</span><span class="step-label">Marksheet</span>
+    </button>
+    <span class="step-sep" aria-hidden="true"></span>
+    <button class="step" data-goto="feedback" type="button">
+      <span class="step-num">3</span><span class="step-label">Feedback</span>
+    </button>
+  </nav>
+
+  <div class="header-actions">
+    <span class="save-state" id="save-state" role="status" aria-live="polite">Saved</span>
+    <button class="btn btn-sm btn-ghost" id="btn-assessments" type="button" title="Saved assessments">Assessments</button>
+    <button class="btn btn-sm btn-ghost" id="btn-settings" type="button" title="Email settings">Settings</button>
+  </div>
+</header>
+
+<main class="app-main">
+
+<!-- ============================================================== SET UP -->
+<section class="view is-active" id="view-setup" aria-labelledby="setup-title">
+  <div class="view-head">
+    <h1 id="setup-title">Set up your assessment</h1>
+    <p>Enter the exam details, the questions, your grade boundaries and your class. You only have to do this once per assessment.</p>
+  </div>
+
+  <!-- Exam details -->
+  <div class="card">
+    <div class="card-head"><h2>Exam details</h2></div>
+    <div class="card-body">
+      <div class="grid cols-3">
+        <div class="field">
+          <label for="exam-name">Assessment name <span aria-hidden="true" style="color:var(--bad)">*</span></label>
+          <input type="text" id="exam-name" placeholder="e.g. Autumn Term Assessment 1" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="exam-subject">Subject</label>
+          <input type="text" id="exam-subject" placeholder="e.g. Mathematics" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="exam-class">Class</label>
+          <input type="text" id="exam-class" placeholder="e.g. 10B/Ma1" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="exam-teacher">Your name</label>
+          <input type="text" id="exam-teacher" placeholder="e.g. Ms Okafor" autocomplete="name">
+        </div>
+        <div class="field">
+          <label for="exam-teacher-email">Your email <span class="hint" style="font-weight:400">(used as reply-to)</span></label>
+          <input type="email" id="exam-teacher-email" placeholder="you@school.sch.uk" autocomplete="email">
+        </div>
+        <div class="field">
+          <label for="exam-date">Date of assessment</label>
+          <input type="date" id="exam-date">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Questions -->
+  <div class="card">
+    <div class="card-head">
+      <h2>Questions</h2>
+      <div class="spacer"></div>
+      <label class="label" for="question-count" style="font-weight:600">Number of questions</label>
+      <input type="number" id="question-count" min="1" max="200" step="1" style="width:82px" value="1">
+      <button class="btn btn-sm" id="btn-add-question" type="button">+ Add question</button>
+      <p>Question numbers are free text, so <code>3a</code>, <code>4(ii)</code> and <code>7b</code> all work. Topics feed the feedback sections, and reteach links appear under &ldquo;Focus on&rdquo;.</p>
+    </div>
+    <div class="card-body flush">
+      <div class="table-wrap">
+        <table class="data" id="questions-table">
+          <thead>
+            <tr>
+              <th class="row-index" scope="col"><span class="visually-hidden">Row</span>#</th>
+              <th scope="col" style="width:110px">Question no.</th>
+              <th scope="col" style="width:110px">Max marks</th>
+              <th scope="col">Topic / Assessment Objective</th>
+              <th scope="col">Reteach resource link</th>
+              <th class="col-actions" scope="col"><span class="visually-hidden">Remove</span></th>
+            </tr>
+          </thead>
+          <tbody id="questions-body"></tbody>
+          <tfoot>
+            <tr>
+              <td></td>
+              <td style="text-align:right">Total</td>
+              <td class="num" id="questions-total">0</td>
+              <td colspan="3" class="hint" id="questions-total-note" style="color:var(--muted);font-size:12.5px"></td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    </div>
+    <div class="card-foot"><div id="questions-errors" style="flex:1"></div></div>
+  </div>
+
+  <!-- Grade boundaries -->
+  <div class="card">
+    <div class="card-head">
+      <h2>Grade boundaries</h2>
+      <div class="spacer"></div>
+      <label class="label" for="paper-type" style="font-weight:600">Paper type</label>
+      <select id="paper-type" style="width:150px">
+        <option value="foundation">Foundation</option>
+        <option value="higher">Higher</option>
+      </select>
+      <p>Enter the <strong>minimum mark</strong> needed for each grade. U is fixed at 0 so every mark always receives a grade.</p>
+    </div>
+    <div class="card-body">
+      <div class="grid cols-4" id="boundaries-grid"></div>
+      <div id="boundaries-errors" style="margin-top:14px"></div>
+    </div>
+  </div>
+
+  <!-- Pupils -->
+  <div class="card">
+    <div class="card-head">
+      <h2>Pupils</h2>
+      <span class="badge badge-neutral" id="pupil-count-badge">0 pupils</span>
+      <div class="spacer"></div>
+      <button class="btn btn-sm" id="btn-download-template" type="button">Download CSV template</button>
+      <button class="btn btn-sm" id="btn-import-csv" type="button">Import CSV</button>
+      <button class="btn btn-sm btn-primary" id="btn-add-pupil" type="button">+ Add pupil</button>
+      <input type="file" id="csv-file" accept=".csv,text/csv" class="visually-hidden">
+    </div>
+    <div class="card-body flush">
+      <div id="pupils-empty" class="empty">
+        <span class="ico" aria-hidden="true">👥</span>
+        <h3>No pupils yet</h3>
+        <p>Add pupils one at a time, or upload a CSV of your class list. Download the template first if you are not sure of the format.</p>
+        <button class="btn btn-primary" id="btn-add-pupil-empty" type="button">+ Add your first pupil</button>
+      </div>
+      <div class="table-wrap" id="pupils-table-wrap" hidden>
+        <table class="data" id="pupils-table">
+          <thead>
+            <tr>
+              <th class="row-index" scope="col">#</th>
+              <th scope="col">Pupil name</th>
+              <th scope="col">Pupil email</th>
+              <th scope="col">Parent email <span style="font-weight:400;text-transform:none;letter-spacing:0">(optional)</span></th>
+              <th class="col-actions" scope="col"><span class="visually-hidden">Remove</span></th>
+            </tr>
+          </thead>
+          <tbody id="pupils-body"></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="card-foot"><div id="pupils-errors" style="flex:1"></div></div>
+  </div>
+
+  <div class="view-nav">
+    <div id="setup-summary" class="hint" style="color:var(--muted)"></div>
+    <div class="spacer"></div>
+    <button class="btn btn-primary" data-goto="marksheet" type="button">Continue to marksheet →</button>
+  </div>
+</section>
+
+<!-- =========================================================== MARKSHEET -->
+<section class="view" id="view-marksheet" aria-labelledby="marksheet-title">
+  <div class="view-head">
+    <h1 id="marksheet-title">Marksheet</h1>
+    <p>Enter marks question by question. Totals, percentages and grades update as you type. Leave a cell blank if you have not marked it yet — blank is <strong>not</strong> the same as zero.</p>
+  </div>
+
+  <div id="marksheet-blocker"></div>
+
+  <div class="card" id="marksheet-card">
+    <div class="card-head">
+      <h2 id="marksheet-heading">Marks</h2>
+      <div class="spacer"></div>
+      <label class="checkline" style="font-size:13px;margin-right:6px">
+        <input type="checkbox" id="toggle-averages" checked>
+        <span>Show class averages</span>
+      </label>
+      <button class="btn btn-sm" id="btn-export-marks" type="button">Export CSV</button>
+    </div>
+    <div class="stats" id="marksheet-stats"></div>
+    <div class="marksheet-wrap">
+      <table class="marksheet" id="marksheet-table">
+        <thead id="marksheet-head"></thead>
+        <tbody id="marksheet-body"></tbody>
+        <tfoot id="marksheet-foot"></tfoot>
+      </table>
+    </div>
+    <div class="legend">
+      <span><i class="swatch blank" aria-hidden="true"></i> Blank = not marked</span>
+      <span><i class="swatch zero" aria-hidden="true"></i> Scored 0</span>
+      <span><i class="swatch full" aria-hidden="true"></i> Full marks</span>
+      <span><span class="kbd">↑</span> <span class="kbd">↓</span> <span class="kbd">←</span> <span class="kbd">→</span> move between cells</span>
+      <span><span class="kbd">Enter</span> next pupil</span>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-head"><h2>Unmarked questions</h2></div>
+    <div class="card-body">
+      <div id="blank-summary"></div>
+      <label class="checkline" style="margin-top:12px">
+        <input type="checkbox" id="toggle-blank-policy">
+        <span>Treat every blank cell as a score of 0
+          <small>Only tick this once marking is finished. Until then, blanks are excluded from totals and those pupils' grades are shown as provisional.</small>
+        </span>
+      </label>
+    </div>
+  </div>
+
+  <div class="view-nav">
+    <button class="btn" data-goto="setup" type="button">← Back to set up</button>
+    <div class="spacer"></div>
+    <button class="btn btn-primary" data-goto="feedback" type="button">Continue to feedback →</button>
+  </div>
+</section>
+
+<!-- ============================================================ FEEDBACK -->
+<section class="view" id="view-feedback" aria-labelledby="feedback-title">
+  <div class="view-head">
+    <h1 id="feedback-title">Feedback</h1>
+    <p>Check who is receiving feedback, preview the email, then send. Nothing is sent until you press <strong>Send feedback</strong> and confirm.</p>
+  </div>
+
+  <div id="feedback-blocker"></div>
+
+  <div class="card">
+    <div class="card-head"><h2>Message options</h2></div>
+    <div class="card-body">
+      <div class="grid cols-2">
+        <div class="field">
+          <label for="teacher-note">Optional note to the whole class</label>
+          <textarea id="teacher-note" placeholder="e.g. A really strong set of results — well done. Please bring your corrections to Thursday's lesson."></textarea>
+          <span class="hint">This appears in every email, above the sign-off.</span>
+        </div>
+        <div class="field">
+          <span class="label">Recipients</span>
+          <label class="checkline" style="margin-top:4px">
+            <input type="checkbox" id="toggle-parents">
+            <span>Also send feedback to parents / guardians
+              <small>Only sent where a parent email address exists. Parents receive the same results, worded for an adult reader.</small>
+            </span>
+          </label>
+          <div id="parent-count-note" class="hint" style="margin-top:8px"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-head">
+      <h2>Who gets feedback</h2>
+      <span class="badge badge-brand" id="selected-count">0 selected</span>
+      <div class="spacer"></div>
+      <button class="btn btn-sm" id="btn-select-all" type="button">Select all</button>
+      <button class="btn btn-sm" id="btn-select-none" type="button">Clear</button>
+    </div>
+    <div class="card-body flush">
+      <div class="table-wrap">
+        <table class="data send-table" id="send-table">
+          <thead>
+            <tr>
+              <th class="chk" scope="col"><input type="checkbox" id="check-all" aria-label="Select all pupils"></th>
+              <th scope="col">Pupil</th>
+              <th scope="col">Email</th>
+              <th class="num" scope="col">Marks</th>
+              <th class="num" scope="col">%</th>
+              <th scope="col" style="text-align:center">Grade</th>
+              <th scope="col" style="width:90px;text-align:center">Preview</th>
+            </tr>
+          </thead>
+          <tbody id="send-body"></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="card-foot">
+      <div id="send-warnings" style="flex:1"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-head"><h2>Send</h2></div>
+    <div class="card-body">
+      <div id="api-status"></div>
+      <div id="send-progress" hidden>
+        <div class="progress-track"><div class="progress-bar" id="progress-bar"></div></div>
+        <div class="hint" id="progress-label" role="status" aria-live="polite">Preparing…</div>
+      </div>
+      <div id="send-results"></div>
+    </div>
+    <div class="card-foot">
+      <button class="btn btn-primary" id="btn-send" type="button">Send feedback</button>
+      <button class="btn" id="btn-preview-first" type="button">Preview an example email</button>
+      <div class="spacer"></div>
+      <span class="hint" id="send-hint"></span>
+    </div>
+  </div>
+
+  <div class="view-nav">
+    <button class="btn" data-goto="marksheet" type="button">← Back to marksheet</button>
+  </div>
+</section>
+
+</main>
+
+<!-- ============================================================== MODALS -->
+<div class="modal-backdrop" id="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+  <div class="modal" id="modal">
+    <div class="modal-head"><h2 id="modal-title">Title</h2></div>
+    <div class="modal-body" id="modal-body"></div>
+    <div class="modal-foot" id="modal-foot"></div>
+  </div>
+</div>
+
+<div class="toasts" id="toasts" aria-live="polite" aria-atomic="false"></div>
+
+<noscript>
+  <div style="padding:40px;text-align:center;font-family:system-ui">
+    <h1>JavaScript is required</h1>
+    <p>This tool runs entirely in your browser and needs JavaScript enabled.</p>
+  </div>
+</noscript>
+
+<script type="module" src="js/app.js"></script>
+</body>
+</html>
