@@ -8,10 +8,11 @@
 import { buildPupilFeedback, pupilSendStatus } from '../feedback-engine.js';
 import { allResults, formatMark } from '../grades.js';
 import { validateAssessment } from '../validation.js';
-import { renderFeedbackEmail, DEFAULT_EMAIL_TEXT, FIELD_LABELS } from '../../shared/email-template.js';
+import { renderFeedbackEmail, DEFAULT_EMAIL_TEXT } from '../../shared/email-template.js';
 import { newId } from '../model.js';
 import { $, el, clear, toast, openModal, closeModal, confirmDialog, callout, plural } from '../ui.js';
 import { canEdit } from '../lock.js';
+import { renderLockBar, applyLockState } from '../lockbar.js';
 import { state, update } from '../app.js';
 import { sendFeedbackEmails, isConfigured, ApiNotConfiguredError } from '../api.js';
 
@@ -19,33 +20,12 @@ let isSending = false;      // guards against a second click while in flight
 let lastResults = null;
 
 export function init() {
-  $('#teacher-note').addEventListener('input', (event) => {
-    update((a) => { a.feedback.teacherNote = event.target.value; }, { rerender: false });
-  });
-
-  // The parents toggle is a master switch: turning it on ticks every pupil in
-  // the Parents column, turning it off clears them. Individual pupils can then
-  // be unticked, which is the whole point of the separate column.
-  $('#toggle-parents').addEventListener('change', (event) => {
-    const on = event.target.checked;
-    update((a) => {
-      a.feedback.sendToParents = on;
-      a.feedback.parentSelectedPupilIds = on ? parentEligible(a).map((p) => p.id) : [];
-    });
-  });
-
   $('#btn-select-all').addEventListener('click', () => setSelection('all'));
   $('#btn-select-none').addEventListener('click', () => setSelection('none'));
   $('#check-all').addEventListener('change', (event) => setSelection(event.target.checked ? 'all' : 'none'));
   $('#check-all-parents').addEventListener('change', (event) => setParentSelection(event.target.checked));
 
-  $('#btn-edit-wording').addEventListener('click', openWordingEditor);
-
-  $('#btn-preview-first').addEventListener('click', () => {
-    const pupil = sendablePupils(state.assessment)[0] || state.assessment.pupils[0];
-    if (!pupil) { toast('Add a pupil first.', 'warn'); return; }
-    openPreview(pupil);
-  });
+  $('#btn-preview-edit').addEventListener('click', () => openPreview(examplePupil(state.assessment)));
 
   $('#btn-send').addEventListener('click', handleSend);
 }
@@ -86,14 +66,7 @@ export function render(assessment) {
     blockerNode.append(callout('warn', 'Some set-up is incomplete', blockers.slice(0, 5)));
   }
 
-  if ($('#teacher-note') !== document.activeElement) {
-    $('#teacher-note').value = assessment.feedback.teacherNote;
-  }
-  $('#toggle-parents').checked = assessment.feedback.sendToParents;
-  $('#btn-edit-wording').disabled = !canEdit(assessment);
-  $('#btn-edit-wording').title = canEdit(assessment)
-    ? 'Change the wording used in every feedback email'
-    : 'Unlock the set up page to change the email wording';
+  renderLockBar($('#lockbar-feedback'), assessment, 'feedback');
 
   // On first visit, pre-select everyone who is ready. Pupils with unmarked
   // questions are deliberately left out until the teacher opts them in.
@@ -105,6 +78,33 @@ export function render(assessment) {
   renderApiStatus();
   renderSendResults();
   updateCounts(assessment);
+
+  // Last, so it can disable controls the code above has just rebuilt.
+  applyFeedbackLock(assessment);
+}
+
+/**
+ * When the assessment is locked, the Feedback page is read-only: nobody can
+ * change who receives feedback, reword the email, or send it. The preview
+ * still opens, because looking at it harms nothing.
+ */
+function applyFeedbackLock(assessment) {
+  const locked = applyLockState(
+    $('#view-feedback'),
+    assessment,
+    '#view-feedback .card input, #view-feedback .card button.btn',
+  );
+  // The preview button is the one control that stays live while locked.
+  const preview = $('#btn-preview-edit');
+  preview.disabled = false;
+  delete preview.dataset.lockedBy;
+  preview.textContent = locked ? 'Preview email' : 'Preview and edit email';
+  $('#btn-send').title = locked ? 'Enter the PIN to send feedback' : '';
+}
+
+/** The pupil whose real data fills the preview. */
+function examplePupil(assessment) {
+  return sendablePupils(assessment)[0] || assessment.pupils[0] || null;
 }
 
 // Distinguish "nothing selected yet" from "teacher deliberately cleared it".
@@ -177,6 +177,9 @@ function renderSendTable(assessment) {
         : el('span', { class: 'muted', title: 'No parent email address', text: '—' })),
       el('td', {}, el('div', { class: 'nm', text: pupil.name || `Pupil ${index + 1}` }), badges),
       el('td', {}, el('span', { class: 'em', text: pupil.email || '—' })),
+      el('td', {}, hasParentEmail
+        ? el('span', { class: 'em', text: pupil.parentEmail.trim() })
+        : el('span', { class: 'muted', text: '—' })),
       el('td', { class: 'num', text: result.total === null ? '—' : `${formatMark(result.total)}/${result.possible}` }),
       el('td', { style: 'text-align:center' },
         el('span', {
@@ -222,11 +225,6 @@ function updateCounts(assessment) {
     : `${plural(totalEmails, 'email')} will be sent (${selected.length} to pupils${parentCount ? `, ${parentCount} to parents` : ''}).`;
   $('#btn-send').disabled = totalEmails === 0 || isSending;
 
-  const withParent = assessment.pupils.filter((p) => p.parentEmail).length;
-  $('#parent-count-note').textContent = withParent === 0
-    ? 'No parent email addresses have been entered, so no parent emails can be sent.'
-    : `${plural(withParent, 'pupil')} in this class ${withParent === 1 ? 'has' : 'have'} a parent email address.`;
-
   const missing = assessment.pupils.filter((p) => !p.email.trim());
   const node = clear($('#send-warnings'));
   if (missing.length) {
@@ -236,52 +234,181 @@ function updateCounts(assessment) {
   }
 }
 
-/* --- Preview ------------------------------------------------------------- */
+/* --- Preview and edit ---------------------------------------------------- */
 
+/**
+ * One screen for both jobs: it shows the real email, built from a real pupil's
+ * marks, and lets the wording be edited directly on it.
+ *
+ * Why edit on the email rather than in a list of fields: the teacher is
+ * changing how the email READS, and the only way to judge that is to see it in
+ * place, next to the results it wraps around.
+ *
+ * The mechanism: the template marks its editable text with `data-qla-edit` and
+ * wraps every substituted {placeholder} in a `data-qla-ph` span. The preview
+ * turns those into contenteditable regions. Reading an edited region back
+ * turns the marker spans into {placeholders} again — so editing an email that
+ * greets "Amelia" saves "Hi {firstName}," and not Amelia's name for the class.
+ *
+ * The iframe is sandboxed WITHOUT allow-scripts, so nothing in the email can
+ * run. It keeps allow-same-origin only so this page can reach in and wire up
+ * the editing.
+ */
 function openPreview(pupil) {
   const assessment = state.assessment;
-  const data = buildPupilFeedback(assessment, pupil);
+  if (!pupil) { toast('Add a pupil first.', 'warn'); return; }
 
+  const data = buildPupilFeedback(assessment, pupil);
   if (!data.hasAnyMark && assessment.exam.blankPolicy !== 'zero') {
     toast(`No marks have been entered for ${data.pupilName || 'this pupil'} yet.`, 'warn');
     return;
   }
 
-  const container = el('div', {});
-  const tabs = el('div', { style: 'display:flex;gap:6px;padding:12px 16px;border-bottom:1px solid var(--line);background:var(--panel)' });
-  const frame = el('iframe', { class: 'preview-frame', title: 'Email preview', sandbox: 'allow-same-origin' });
-  container.append(tabs, frame);
+  const editable = canEdit(assessment);
+  let audience = 'pupil';
+  let dirty = false;
 
-  const show = (audience) => {
+  // Everything is edited on a copy, so Cancel really does cancel.
+  const draft = {
+    pupil: { ...DEFAULT_EMAIL_TEXT.pupil, ...(assessment.emailText?.pupil || {}) },
+    parent: { ...DEFAULT_EMAIL_TEXT.parent, ...(assessment.emailText?.parent || {}) },
+  };
+  let teacherNote = assessment.feedback.teacherNote || '';
+
+  const frame = el('iframe', {
+    class: 'preview-frame',
+    title: 'Email preview',
+    sandbox: 'allow-same-origin',   // deliberately no allow-scripts
+  });
+
+  const subjectInput = el('input', {
+    type: 'text', id: 'preview-subject', class: 'subject-input',
+    value: draft[audience].subject, disabled: !editable,
+  });
+  subjectInput.addEventListener('input', () => {
+    draft[audience].subject = subjectInput.value;
+    dirty = true;
+  });
+
+  const tabs = el('div', { class: 'tabs' });
+  const status = el('span', { class: 'hint' });
+
+  /** Turn an edited region back into template text, placeholders restored. */
+  const readBack = (node) => {
+    let out = '';
+    for (const child of node.childNodes) {
+      if (child.nodeType === Node.TEXT_NODE) out += child.nodeValue;
+      else if (child.nodeName === 'BR') out += '\n';
+      else if (child.dataset && child.dataset.qlaPh) out += `{${child.dataset.qlaPh}}`;
+      else out += readBack(child);
+    }
+    return out;
+  };
+
+  const paint = () => {
     const { subject, html } = renderFeedbackEmail(data, {
       audience,
       schoolName: window.QLA_CONFIG?.schoolName || '',
-      text: assessment.emailText,
+      text: draft,
+      editable,
     });
-    // srcdoc + a sandbox with no allow-scripts: the preview cannot run anything.
     frame.srcdoc = html;
+    subjectInput.value = draft[audience].subject;
     for (const button of tabs.querySelectorAll('button')) {
       button.classList.toggle('btn-primary', button.dataset.audience === audience);
     }
-    $('#modal-title').textContent = `Preview — ${subject}`;
+    $('#modal-title').textContent = editable ? 'Preview and edit email' : 'Preview email';
+    status.textContent = `Showing ${data.pupilName || 'the first pupil'}'s real results — ${subject}`;
   };
 
-  for (const [audience, label] of [['pupil', 'Pupil version'], ['parent', 'Parent version']]) {
+  // Wire up editing once the iframe has rendered its document.
+  frame.addEventListener('load', () => {
+    const doc = frame.contentDocument;
+    if (!doc || !editable) return;
+
+    // Injected from here rather than baked into the email, so a real email
+    // never carries preview styling.
+    const style = doc.createElement('style');
+    style.textContent = `
+      [data-qla-edit]{outline:1px dashed rgba(79,70,229,.35);outline-offset:3px;border-radius:3px;
+        transition:background .12s;cursor:text;white-space:pre-wrap;}
+      [data-qla-edit]:hover{background:rgba(79,70,229,.06)}
+      [data-qla-edit]:focus{outline:2px solid #4f46e5;background:#fff;}
+      [data-qla-ph]{background:rgba(79,70,229,.12);border-radius:3px;padding:0 2px;}
+      [data-qla-edit]:empty::before{content:attr(data-placeholder);color:#94a3b8;font-style:italic;}
+    `;
+    doc.head.appendChild(style);
+
+    for (const region of doc.querySelectorAll('[data-qla-edit]')) {
+      region.contentEditable = 'true';
+      region.spellcheck = true;
+      region.addEventListener('input', () => {
+        const key = region.dataset.qlaEdit;
+        const value = readBack(region).replace(/\u00a0/g, ' ');
+        if (key === 'teacherNote') teacherNote = value.trim();
+        else draft[audience][key] = value;
+        dirty = true;
+      });
+      // Keep line breaks simple: Enter inserts a <br>, never a new block.
+      region.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter') {
+          event.preventDefault();
+          doc.execCommand('insertLineBreak');
+        }
+      });
+    }
+  });
+
+  for (const [value, label] of [['pupil', 'Pupil version'], ['parent', 'Parent version']]) {
     tabs.append(el('button', {
-      class: 'btn btn-sm', type: 'button', dataset: { audience },
-      onclick: () => show(audience),
+      class: 'btn btn-sm', type: 'button', dataset: { audience: value },
+      onclick: () => { audience = value; paint(); },
     }, label));
   }
 
+  const toolbar = el('div', { class: 'preview-toolbar' },
+    tabs,
+    el('div', { class: 'field preview-subject' },
+      el('label', { for: 'preview-subject', class: 'label', text: 'Subject line' }),
+      subjectInput),
+    editable
+      ? el('p', { class: 'hint preview-tip' },
+        'Click any highlighted text on the email to change it. ',
+        el('span', { class: 'ph-chip', text: 'Amelia' }),
+        ' marks a detail filled in for each pupil — leave it in place and it stays personal.')
+      : el('p', { class: 'hint preview-tip', text: 'The assessment is locked, so the wording cannot be changed. Enter the PIN to edit it.' }),
+    status,
+  );
+
   openModal({
     title: 'Preview',
-    body: container,
+    body: el('div', { class: 'preview-shell' }, toolbar, frame),
     wide: true,
-    buttons: [
-      { label: 'Close' },
-    ],
+    buttons: editable
+      ? [
+        { label: 'Cancel' },
+        {
+          label: 'Reset wording',
+          onClick: () => {
+            update((a) => { a.emailText = {}; });
+            toast('Email wording reset to the default.', 'ok');
+          },
+        },
+        {
+          label: 'Save wording',
+          class: 'btn-primary',
+          onClick: () => {
+            update((a) => {
+              a.emailText = { pupil: { ...draft.pupil }, parent: { ...draft.parent } };
+              a.feedback.teacherNote = teacherNote;
+            });
+            toast(dirty ? 'Email wording saved for every pupil in this assessment.' : 'No changes to save.', 'ok');
+          },
+        },
+      ]
+      : [{ label: 'Close' }],
   });
-  show('pupil');
+  paint();
 }
 
 /* --- API status ---------------------------------------------------------- */
@@ -442,97 +569,4 @@ function renderSendResults() {
       realFailures.slice(0, 10).map((r) => `${r.to} — ${r.error || 'unknown error'}`)));
     node.append(el('p', { class: 'hint', style: 'margin-top:-6px', text: 'Fix the addresses on the set-up page, deselect everyone who succeeded, and send again.' }));
   }
-}
-
-/* --- Email wording editor ------------------------------------------------ */
-
-/**
- * Lets an admin change the fixed wording of the feedback emails — the
- * greeting, the section headings, the sign-off. The results themselves are
- * always generated from the marksheet and cannot be edited here.
- *
- * Gated behind the Setup lock: if a PIN has been set and not entered this
- * session, the wording is read-only. That matches how schools will want it
- * once staff accounts exist.
- */
-function openWordingEditor() {
-  const assessment = state.assessment;
-  if (!canEdit(assessment)) {
-    toast('The set up is locked. Enter the PIN on the Set up page to change the email wording.', 'warn', 6000);
-    return;
-  }
-
-  let audience = 'pupil';
-  const draft = {
-    pupil: { ...DEFAULT_EMAIL_TEXT.pupil, ...(assessment.emailText?.pupil || {}) },
-    parent: { ...DEFAULT_EMAIL_TEXT.parent, ...(assessment.emailText?.parent || {}) },
-  };
-
-  const fields = el('div', { class: 'wording-fields' });
-  const tabs = el('div', { class: 'tabs' });
-
-  const renderFields = () => {
-    clear(fields);
-    for (const [key, label] of Object.entries(FIELD_LABELS)) {
-      const isLong = key === 'intro' || key === 'signOff' || key === 'closing';
-      const control = el(isLong ? 'textarea' : 'input', {
-        id: `wording-${key}`,
-        value: draft[audience][key] ?? '',
-        rows: isLong ? '3' : null,
-        type: isLong ? null : 'text',
-      });
-      control.addEventListener('input', () => { draft[audience][key] = control.value; });
-      fields.append(el('div', { class: 'field' },
-        el('label', { for: `wording-${key}`, text: label }),
-        control));
-    }
-    for (const button of tabs.querySelectorAll('button')) {
-      button.classList.toggle('btn-primary', button.dataset.audience === audience);
-    }
-  };
-
-  for (const [value, label] of [['pupil', 'Pupil email'], ['parent', 'Parent email']]) {
-    tabs.append(el('button', {
-      class: 'btn btn-sm', type: 'button', dataset: { audience: value },
-      onclick: () => { audience = value; renderFields(); },
-    }, label));
-  }
-
-  const body = el('div', { class: 'grid', style: 'gap:14px' },
-    el('div', { class: 'callout callout-info' },
-      el('span', { class: 'ico', 'aria-hidden': 'true', text: 'ℹ️' }),
-      el('div', {},
-        el('strong', { text: 'This wording applies to every email in this assessment' }),
-        el('span', {
-          text: 'Use {firstName}, {fullName}, {examName}, {subject}, {grade}, {totalMarks} '
-            + 'and {totalPossible} to drop in each pupil’s own details. Marks, grades and the '
-            + 'question breakdown are always generated from the marksheet and cannot be edited.',
-        }))),
-    tabs, fields,
-  );
-
-  openModal({
-    title: 'Edit email wording',
-    body,
-    wide: true,
-    buttons: [
-      { label: 'Cancel' },
-      {
-        label: 'Reset to default',
-        onClick: () => {
-          update((a) => { a.emailText = {}; });
-          toast('Email wording reset to the default.', 'ok');
-        },
-      },
-      {
-        label: 'Save wording',
-        class: 'btn-primary',
-        onClick: () => {
-          update((a) => { a.emailText = { pupil: { ...draft.pupil }, parent: { ...draft.parent } }; });
-          toast('Email wording saved. Use Preview to check it.', 'ok');
-        },
-      },
-    ],
-  });
-  renderFields();
 }

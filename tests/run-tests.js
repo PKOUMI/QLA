@@ -637,6 +637,71 @@ test('URL validation only allows http and https', () => {
   assert.equal(isValidUrl('example.com'), false);
 });
 
+/* ======================== editable email preview ======================== */
+
+test('the editable preview adds edit hooks; a real email carries none', () => {
+  const a = fixture();
+  a.questions.forEach((q) => setMark(a, a.pupils[0].id, q.id, 3));
+  const fb = buildPupilFeedback(a, a.pupils[0]);
+
+  const real = renderFeedbackEmail(fb, { audience: 'pupil' });
+  const preview = renderFeedbackEmail(fb, { audience: 'pupil', editable: true });
+
+  assert.equal(/data-qla-edit/.test(real.html), false, 'a sent email must carry no editing hooks');
+  assert.equal(/data-qla-ph/.test(real.html), false);
+  assert.ok(/data-qla-edit/.test(preview.html));
+});
+
+test('the preview wraps each placeholder so it survives being edited', () => {
+  const a = fixture();
+  a.pupils[0].name = 'Amelia Stone';
+  a.questions.forEach((q) => setMark(a, a.pupils[0].id, q.id, 3));
+  const fb = buildPupilFeedback(a, a.pupils[0]);
+  const { html } = renderFeedbackEmail(fb, { audience: 'pupil', editable: true });
+
+  // The greeting reads "Hi Amelia," with Amelia individually marked, which is
+  // what lets the editor put {firstName} back when the text is read out again.
+  assert.ok(html.includes('<span data-qla-ph="firstName">Amelia</span>'));
+});
+
+test('every heading is reachable in the preview even when its section is empty', () => {
+  const a = fixture();
+  // Middling marks everywhere: nothing qualifies as a strength or a weakness.
+  a.questions.forEach((q) => setMark(a, a.pupils[0].id, q.id, q.maxMarks / 2));
+  const fb = buildPupilFeedback(a, a.pupils[0]);
+  assert.deepEqual(fb.wentWell, []);
+  assert.deepEqual(fb.evenBetterIf, []);
+
+  const real = renderFeedbackEmail(fb, { audience: 'pupil' });
+  const preview = renderFeedbackEmail(fb, { audience: 'pupil', editable: true });
+
+  assert.equal(real.html.includes('What went well'), false, 'an empty section is not sent');
+  assert.ok(preview.html.includes('What went well'), 'but it can still be reworded');
+  assert.ok(preview.html.includes('Even better if'));
+});
+
+test('the class note block appears in the preview so it can be written there', () => {
+  const a = fixture();
+  a.questions.forEach((q) => setMark(a, a.pupils[0].id, q.id, 3));
+  const fb = buildPupilFeedback(a, a.pupils[0]);
+  assert.equal(fb.teacherNote, '');
+
+  const real = renderFeedbackEmail(fb, { audience: 'pupil' });
+  const preview = renderFeedbackEmail(fb, { audience: 'pupil', editable: true });
+  assert.equal(real.html.includes('A note from'), false, 'an empty note is not sent');
+  assert.ok(preview.html.includes('data-qla-edit="teacherNote"'));
+});
+
+test('a name containing markup cannot escape the placeholder marker', () => {
+  const a = fixture();
+  a.pupils[0].name = '<b>Evil</b> Name';
+  a.questions.forEach((q) => setMark(a, a.pupils[0].id, q.id, 3));
+  const fb = buildPupilFeedback(a, a.pupils[0]);
+  const { html } = renderFeedbackEmail(fb, { audience: 'pupil', editable: true });
+  assert.equal(html.includes('<b>Evil</b>'), false);
+  assert.ok(html.includes('&lt;b&gt;'));
+});
+
 /* ============================== setup lock ============================== */
 
 // These are async because PIN hashing uses the Web Crypto API, so they run in

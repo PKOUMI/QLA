@@ -1,5 +1,54 @@
 # Changelog
 
+## v3 — change request of 21 August 2026
+
+### Marksheet
+- The mark grid now fills the window instead of sitting in a fixed box, and it
+  is measured rather than guessed — how much room is left depends on the window
+  size and on whether a set-up warning is showing, so it is worked out at
+  render time and on resize.
+- Rows are a single line: the pupil's email moved to the row's tooltip, with a
+  warning icon where an address is missing. The page header, stats strip,
+  column headers and legend were all tightened.
+- Net effect on a 1400×800 laptop: **10 pupils visible at once, up from 2–4**,
+  and the grid no longer runs off the bottom of the screen. On a 1080p display
+  it is about 15.
+
+### Feedback
+- **Message options card removed.** The optional note to the class was inside
+  it; rather than lose the feature, it moved into the email preview, where it
+  is written directly onto the email in the place it will appear. The "also
+  send to parents" toggle is gone too — the **Parents** column header checkbox
+  already does exactly that job.
+- **Send now sits above Who gets feedback.**
+- **Parent email column added** to the table, beside the pupil email.
+- **One "Preview and edit email" button** replaces the separate preview and
+  wording buttons. It opens the real email, built from the first pupil's real
+  marks, and the wording can be edited directly on it: click any highlighted
+  text and type. Changes apply to every email in the assessment.
+- Personal details are highlighted as chips in the preview. Editing an email
+  that greets "Hi Amelia," saves `Hi {firstName},` and not Amelia's name — so
+  the next pupil is still greeted by their own name. Tested explicitly.
+- Both the pupil and parent versions are editable from the same screen, with
+  the subject line above the preview.
+- The preview iframe is sandboxed **without** `allow-scripts`, so nothing in an
+  email can run. Editing is wired up from the page itself.
+
+### The lock
+- The PIN lock now covers **Set up and Feedback**. When locked, nobody can
+  change who receives feedback, reword the email, or send it.
+- Entering marks on the marksheet is still never affected.
+- The lock bar appears on both pages and the same PIN unlocks both, from
+  either page. The lock UI moved into `js/lockbar.js` so there is one
+  implementation rather than two.
+- While locked, the preview still opens — read-only, with no editing and a
+  Close button. Looking at an email harms nothing.
+
+### Data
+- No schema change. Assessments saved by v2 load unchanged.
+
+---
+
 ## v2 — change request of 21 August 2026
 
 ### Set up

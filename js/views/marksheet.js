@@ -43,6 +43,35 @@ export function init() {
   });
 }
 
+/**
+ * Give the mark grid every pixel that is actually left on screen.
+ *
+ * A fixed max-height cannot work here: how much room is left depends on how
+ * many stats wrap, whether a set-up warning is showing and how tall the
+ * window is. So it is measured. Teachers mark whole classes in one sitting,
+ * and scrolling a 30-name list four rows at a time is the difference between
+ * this being usable and not.
+ */
+function fitMarksheetHeight() {
+  const wrap = $('.marksheet-wrap');
+  if (!wrap) return;
+
+  // Distance from the top of the document, so the result does not change as
+  // the page is scrolled.
+  const top = wrap.getBoundingClientRect().top + window.scrollY;
+  const roomBelow = 58;              // legend, card edge and a little breathing space
+  const available = window.innerHeight - top - roomBelow;
+  wrap.style.maxHeight = `${Math.max(240, Math.round(available))}px`;
+}
+
+// Re-measure when the window changes shape (including a laptop being docked).
+let resizeQueued = false;
+window.addEventListener('resize', () => {
+  if (resizeQueued) return;
+  resizeQueued = true;
+  requestAnimationFrame(() => { resizeQueued = false; fitMarksheetHeight(); });
+});
+
 export function render(assessment) {
   const { bySection } = validateAssessment(assessment);
   const blockers = [...bySection.questions, ...bySection.boundaries, ...bySection.pupils];
@@ -70,6 +99,9 @@ export function render(assessment) {
   renderBody(assessment, results);
   renderFoot(assessment);
   renderBlankSummary(assessment, results);
+
+  // After the table exists, so the measurement is of the real layout.
+  requestAnimationFrame(fitMarksheetHeight);
 }
 
 /* --- Stats strip --------------------------------------------------------- */
@@ -128,9 +160,14 @@ function renderBody(assessment, results) {
   assessment.pupils.forEach((pupil, rowIndex) => {
     const result = results[rowIndex];
     const row = el('tr', {},
-      el('td', { class: 'pupil-col' }, el('div', { class: 'pupil-cell' },
-        el('div', { class: 'nm', text: pupil.name || `Pupil ${rowIndex + 1}` }),
-        el('div', { class: 'em', text: pupil.email || 'No email address' }))),
+      el('td', { class: 'pupil-col' }, el('div', {
+        class: 'pupil-cell',
+        title: pupil.email || 'No email address — feedback cannot be sent to this pupil',
+      },
+      el('div', { class: 'nm', text: pupil.name || `Pupil ${rowIndex + 1}` }),
+      pupil.email.trim() ? null : el('span', {
+        class: 'warn-dot', 'aria-label': 'No email address', text: '⚠',
+      }))),
     );
 
     assessment.questions.forEach((question, colIndex) => {
@@ -294,9 +331,10 @@ function renderFoot(assessment) {
   const summary = classSummary(assessment);
 
   const row = el('tr', { class: 'avg-row' },
-    el('td', { class: 'pupil-col' }, el('div', { class: 'pupil-cell' },
-      el('div', { class: 'nm', text: 'Class average marks' }),
-      el('div', { class: 'em', text: `${plural(summary.count, 'fully marked paper')}` }))),
+    el('td', { class: 'pupil-col' }, el('div', {
+      class: 'pupil-cell',
+      title: `${plural(summary.count, 'fully marked paper')} included`,
+    }, el('div', { class: 'nm', text: 'Class average marks' }))),
   );
 
   averages.forEach((average) => {

@@ -70,15 +70,26 @@ function bulletList(items, accent, background) {
     </td></tr>`).join('');
 }
 
-function section(title, accent, background, innerRows) {
-  if (!innerRows) return '';
+/**
+ * @param {string} titleHtml  already escaped, may contain placeholder markers
+ * @param {string} editKey    when set, the heading becomes editable in the
+ *                            preview (see the `editable` option)
+ * @param {string} emptyNote  shown instead of the list when there is nothing
+ *                            to say — only used in the editable preview, so
+ *                            every heading can be reached and reworded
+ */
+function section(titleHtml, accent, background, innerRows, editKey = '', emptyNote = '') {
+  if (!innerRows && !emptyNote) return '';
+  const inner = innerRows || `
+    <tr><td style="color:${COLOURS.muted};font-size:14px;line-height:22px;font-style:italic;">${esc(emptyNote)}</td></tr>`;
+  const editAttr = editKey ? ` data-qla-edit="${editKey}"` : '';
   return `
   <tr><td style="padding:0 0 16px 0;">
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
            style="background:${background};border:1px solid ${COLOURS.line};border-radius:10px;">
       <tr><td style="padding:16px 18px;">
-        <p style="margin:0 0 10px 0;font-size:12px;letter-spacing:.08em;text-transform:uppercase;font-weight:700;color:${accent};">${esc(title)}</p>
-        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">${innerRows}</table>
+        <p${editAttr} style="margin:0 0 10px 0;font-size:12px;letter-spacing:.08em;text-transform:uppercase;font-weight:700;color:${accent};">${titleHtml}</p>
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">${inner}</table>
       </td></tr>
     </table>
   </td></tr>`;
@@ -197,10 +208,10 @@ export const FIELD_LABELS = {
   signOffName: 'Signed by',
 };
 
-/** Replace {placeholders} with this pupil's details. Returns raw, unescaped text. */
-function fill(template, data) {
+/** The values a {placeholder} can stand for, for one pupil. */
+function placeholderValues(data) {
   const fullName = data.pupilName || 'Student';
-  const values = {
+  return {
     firstName: fullName.split(' ')[0] || fullName,
     fullName,
     examName: data.examName || 'Assessment',
@@ -209,10 +220,37 @@ function fill(template, data) {
     totalMarks: data.totalMarks ?? '—',
     totalPossible: data.totalPossible ?? '—',
   };
+}
+
+/** Replace {placeholders} with this pupil's details. Returns raw, unescaped text. */
+function fill(template, data) {
+  const values = placeholderValues(data);
   return String(template ?? '').replace(
     /\{(\w+)\}/g,
     (match, key) => (key in values ? String(values[key]) : match),
   );
+}
+
+/**
+ * The HTML form of a piece of wording.
+ *
+ * The template text is escaped FIRST and the placeholders substituted after,
+ * so a teacher cannot put markup into an email, and a pupil whose name
+ * contains a bracket cannot break the substitution.
+ *
+ * In editable mode each substituted value is wrapped in a marker span. That is
+ * what lets the preview be edited directly: when the edited text is read back,
+ * those spans turn into {placeholders} again, so editing an email that says
+ * "Hi Amelia," does not save the literal name "Amelia" for the whole class.
+ */
+function fillHtml(template, values, editable) {
+  return esc(String(template ?? ''))
+    .replace(/\{(\w+)\}/g, (match, key) => {
+      if (!(key in values)) return match;
+      const value = esc(String(values[key]));
+      return editable ? `<span data-qla-ph="${key}">${value}</span>` : value;
+    })
+    .replace(/\n/g, '<br>');
 }
 
 /** Merge the teacher's overrides over the defaults for one audience. */
@@ -239,9 +277,16 @@ export function renderFeedbackEmail(data, options = {}) {
   const say = (key) => fill(words[key], data);
   const teacher = say('signOffName') || 'Your teacher';
 
+  // `editable` is only ever true for the on-screen preview, never for a real
+  // send. It adds the hooks the preview needs to be edited in place.
+  const editable = Boolean(options.editable);
+  const values = placeholderValues(data);
+  const asHtml = (key) => fillHtml(words[key], values, editable);
+  const edit = (key) => (editable ? ` data-qla-edit="${key}"` : '');
+
   const subject = say('subject');
-  const greeting = esc(say('greeting'));
-  const intro = esc(say('intro')).replace(/\n/g, '<br>');
+  const greeting = asHtml('greeting');
+  const intro = asHtml('intro');
 
   // Only reachable from Preview: a part-marked paper cannot be sent.
   const provisionalNote = !data.isComplete ? `
@@ -272,13 +317,13 @@ export function renderFeedbackEmail(data, options = {}) {
     COLOURS.brand,
   );
 
-  const noteBlock = data.teacherNote ? `
+  const noteBlock = (data.teacherNote || editable) ? `
   <tr><td style="padding:0 0 18px 0;">
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
            style="border-left:3px solid ${COLOURS.brand};background:${COLOURS.panel};border-radius:0 10px 10px 0;">
       <tr><td style="padding:14px 18px;font-size:14px;line-height:22px;color:${COLOURS.body};">
         <span style="display:block;font-size:11px;letter-spacing:.07em;text-transform:uppercase;color:${COLOURS.muted};padding-bottom:6px;">A note from ${esc(teacher)}</span>
-        ${esc(data.teacherNote).replace(/\n/g, '<br>')}
+        <span${editable ? ' data-qla-edit="teacherNote" data-placeholder="Add an optional note to the whole class…"' : ''}>${esc(data.teacherNote).replace(/\n/g, '<br>')}</span>
       </td></tr>
     </table>
   </td></tr>` : '';
@@ -307,8 +352,8 @@ export function renderFeedbackEmail(data, options = {}) {
       </td></tr>
 
       <tr><td style="padding:26px 28px 4px 28px;">
-        <p style="margin:0 0 12px 0;font-size:16px;color:${COLOURS.ink};">${greeting}</p>
-        <p style="margin:0 0 20px 0;font-size:15px;line-height:23px;color:${COLOURS.body};">${intro}</p>
+        <p${edit('greeting')} style="margin:0 0 12px 0;font-size:16px;color:${COLOURS.ink};">${greeting}</p>
+        <p${edit('intro')} style="margin:0 0 20px 0;font-size:15px;line-height:23px;color:${COLOURS.body};">${intro}</p>
       </td></tr>
 
       <tr><td style="padding:0 28px;">
@@ -316,22 +361,25 @@ export function renderFeedbackEmail(data, options = {}) {
           ${provisionalNote}
           ${scorePanel(data)}
           ${questionTable(data.rows)}
-          ${section(wwwTitle, COLOURS.strong, COLOURS.strongBg, wwwRows)}
-          ${section(ebiTitle, COLOURS.weak, COLOURS.weakBg, ebiRows)}
-          ${section(focusTitle, COLOURS.brand, '#eef2ff', focusRows)}
-          ${nothingFlagged ? `
-          <tr><td style="padding:0 0 16px 0;font-size:14px;line-height:22px;color:${COLOURS.muted};">
-            ${esc(say('nothingFlagged'))}
+          ${section(asHtml('wwwHeading'), COLOURS.strong, COLOURS.strongBg, wwwRows, editable ? 'wwwHeading' : '',
+            editable ? 'Topics this pupil did well on are listed here.' : '')}
+          ${section(asHtml('ebiHeading'), COLOURS.weak, COLOURS.weakBg, ebiRows, editable ? 'ebiHeading' : '',
+            editable ? 'Topics to work on are listed here.' : '')}
+          ${section(asHtml('focusHeading'), COLOURS.brand, '#eef2ff', focusRows, editable ? 'focusHeading' : '',
+            editable ? 'Reteach links for the weakest topics are listed here.' : '')}
+          ${nothingFlagged || editable ? `
+          <tr><td${edit('nothingFlagged')} style="padding:0 0 16px 0;font-size:14px;line-height:22px;color:${COLOURS.muted};">
+            ${asHtml('nothingFlagged')}
           </td></tr>` : ''}
           ${noteBlock}
         </table>
       </td></tr>
 
       <tr><td style="padding:6px 28px 26px 28px;">
-        <p style="margin:0;font-size:15px;line-height:23px;color:${COLOURS.body};">
-          ${esc(say('closing')).replace(/\n/g, '<br>')}
+        <p${edit('closing')} style="margin:0;font-size:15px;line-height:23px;color:${COLOURS.body};">
+          ${asHtml('closing')}
         </p>
-        <p style="margin:16px 0 0 0;font-size:15px;color:${COLOURS.body};">${esc(say('signOff'))}<br><strong style="color:${COLOURS.ink};">${esc(teacher)}</strong></p>
+        <p style="margin:16px 0 0 0;font-size:15px;color:${COLOURS.body};"><span${edit('signOff')}>${asHtml('signOff')}</span><br><strong${edit('signOffName')} style="color:${COLOURS.ink};">${asHtml('signOffName')}</strong></p>
       </td></tr>
 
       <tr><td style="background:${COLOURS.panel};border-top:1px solid ${COLOURS.line};padding:14px 28px;">

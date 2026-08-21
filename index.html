@@ -54,16 +54,7 @@
   </div>
 
   <!-- Setup lock. Stops a colleague changing the paper while marks are entered. -->
-  <div class="lockbar" id="lockbar">
-    <span class="lockbar-ico" id="lockbar-ico" aria-hidden="true">&#128275;</span>
-    <div class="lockbar-text">
-      <strong id="lockbar-title">Set up is unlocked</strong>
-      <span class="hint" id="lockbar-note">Anyone using this browser can change the questions, boundaries and pupil list.</span>
-    </div>
-    <div class="spacer"></div>
-    <button class="btn btn-sm" id="btn-lock" type="button">Lock set up</button>
-    <button class="btn btn-sm btn-primary" id="btn-unlock" type="button" hidden>Enter PIN to unlock</button>
-  </div>
+  <div class="lockbar" id="lockbar"></div>
 
   <!-- Exam details -->
   <div class="card">
@@ -195,7 +186,7 @@
 <section class="view" id="view-marksheet" aria-labelledby="marksheet-title">
   <div class="view-head">
     <h1 id="marksheet-title">Marksheet</h1>
-    <p>Enter marks question by question. A total and a grade appear once every question for that pupil has been marked. Leave a cell blank if you have not marked it yet — blank is <strong>not</strong> the same as zero.</p>
+    <p>A total and a grade appear once every question for that pupil is marked. Blank is <strong>not</strong> the same as zero.</p>
   </div>
 
   <div id="marksheet-blocker"></div>
@@ -267,31 +258,29 @@
 <section class="view" id="view-feedback" aria-labelledby="feedback-title">
   <div class="view-head">
     <h1 id="feedback-title">Feedback</h1>
-    <p>Check who is receiving feedback, preview the email, then send. Nothing is sent until you press <strong>Send feedback</strong> and confirm.</p>
+    <p>Preview and edit the email, check who is receiving it, then send. Nothing is sent until you press <strong>Send feedback</strong> and confirm.</p>
   </div>
+
+  <div class="lockbar" id="lockbar-feedback"></div>
 
   <div id="feedback-blocker"></div>
 
+  <!-- Send comes first: it is what the page is for, and it holds the preview. -->
   <div class="card">
-    <div class="card-head"><h2>Message options</h2></div>
+    <div class="card-head"><h2>Send</h2></div>
     <div class="card-body">
-      <div class="grid cols-2">
-        <div class="field">
-          <label for="teacher-note">Optional note to the whole class</label>
-          <textarea id="teacher-note" placeholder="e.g. A really strong set of results — well done. Please bring your corrections to Thursday's lesson."></textarea>
-          <span class="hint">This appears in every email, above the sign-off.</span>
-        </div>
-        <div class="field">
-          <span class="label">Recipients</span>
-          <label class="checkline" style="margin-top:4px">
-            <input type="checkbox" id="toggle-parents">
-            <span>Also send feedback to parents / guardians
-              <small>Only sent where a parent email address exists. Parents receive the same results, worded for an adult reader.</small>
-            </span>
-          </label>
-          <div id="parent-count-note" class="hint" style="margin-top:8px"></div>
-        </div>
+      <div id="api-status"></div>
+      <div id="send-progress" hidden>
+        <div class="progress-track"><div class="progress-bar" id="progress-bar"></div></div>
+        <div class="hint" id="progress-label" role="status" aria-live="polite">Preparing&hellip;</div>
       </div>
+      <div id="send-results"></div>
+    </div>
+    <div class="card-foot">
+      <button class="btn btn-primary" id="btn-send" type="button">Send feedback</button>
+      <button class="btn" id="btn-preview-edit" type="button">Preview and edit email</button>
+      <div class="spacer"></div>
+      <span class="hint" id="send-hint"></span>
     </div>
   </div>
 
@@ -318,7 +307,8 @@
                 <span class="chk-caption">Parents</span>
               </th>
               <th scope="col">Pupil</th>
-              <th scope="col">Email</th>
+              <th scope="col">Pupil email</th>
+              <th scope="col">Parent email</th>
               <th class="num" scope="col">Marks</th>
               <th scope="col" style="text-align:center">Grade</th>
               <th scope="col" style="width:90px;text-align:center">Preview</th>
@@ -333,27 +323,8 @@
     </div>
   </div>
 
-  <div class="card">
-    <div class="card-head"><h2>Send</h2></div>
-    <div class="card-body">
-      <div id="api-status"></div>
-      <div id="send-progress" hidden>
-        <div class="progress-track"><div class="progress-bar" id="progress-bar"></div></div>
-        <div class="hint" id="progress-label" role="status" aria-live="polite">Preparing…</div>
-      </div>
-      <div id="send-results"></div>
-    </div>
-    <div class="card-foot">
-      <button class="btn btn-primary" id="btn-send" type="button">Send feedback</button>
-      <button class="btn" id="btn-preview-first" type="button">Preview an example email</button>
-      <button class="btn" id="btn-edit-wording" type="button">Edit email wording</button>
-      <div class="spacer"></div>
-      <span class="hint" id="send-hint"></span>
-    </div>
-  </div>
-
   <div class="view-nav">
-    <button class="btn" data-goto="marksheet" type="button">← Back to marksheet</button>
+    <button class="btn" data-goto="analyse" type="button">&larr; Back to analysis</button>
   </div>
 </section>
 
@@ -399,6 +370,7 @@
     'js/api.js',
     'js/ui.js',
     'js/lock.js',
+    'js/lockbar.js',
     'js/charts.js',
     'js/views/setup.js',
     'js/views/marksheet.js',

@@ -6,11 +6,11 @@
  */
 
 import { newQuestion, newPupil, resizeQuestions, applyPaperType, pruneMarks, GRADE_SETS } from '../model.js';
-import { canEdit, isLocked, isLockEnabled, buildLock, pinMatches, validatePin, setSessionUnlocked } from '../lock.js';
+import { renderLockBar, applyLockState } from '../lockbar.js';
 import { totalPossible } from '../grades.js';
 import { validateAssessment, isValidUrl, isValidEmail } from '../validation.js';
 import { parsePupilCsv, pupilTemplateCsv } from '../csv.js';
-import { $, el, clear, toast, openModal, closeModal, confirmDialog, renderMessages, downloadFile, readFileAsText, plural } from '../ui.js';
+import { $, el, clear, toast, openModal, confirmDialog, renderMessages, downloadFile, readFileAsText, plural } from '../ui.js';
 import { state, update } from '../app.js';
 
 /* --- Wiring (runs once) -------------------------------------------------- */
@@ -78,9 +78,6 @@ export function init() {
     }
   });
 
-  $('#btn-lock').addEventListener('click', openLockDialog);
-  $('#btn-unlock').addEventListener('click', openUnlockDialog);
-
   // Section-level error lists are refreshed when focus leaves the section, so a
   // half-typed URL is not flagged while the teacher is still typing it.
   for (const selector of ['#questions-body', '#pupils-body', '#boundaries-grid']) {
@@ -128,8 +125,8 @@ export function render(assessment) {
   renderQuestions(assessment);
   renderBoundaries(assessment);
   renderPupils(assessment);
-  renderLockBar(assessment);
-  applyLockState(assessment);
+  renderLockBar($('#lockbar'), assessment, 'setup');
+  applyLockToSetup(assessment);
   refresh(assessment);
 }
 
@@ -454,155 +451,17 @@ async function handleCsvFile(event) {
 /* --- Setup lock ---------------------------------------------------------- */
 
 /**
- * The lock exists to stop a colleague changing the paper while marks are being
- * entered — editing a question's maximum marks halfway through silently
- * invalidates every total. It deters accidents; it is not security. See
- * js/lock.js for the honest limits.
+ * The lock itself lives in js/lockbar.js because the Feedback page shows the
+ * same bar and uses the same PIN. This view only says what Set up freezes.
  */
 
-/** Everything on Setup that must be frozen when the lock is on. */
-const LOCKABLE = '#view-setup input, #view-setup select, #view-setup textarea, '
-  + '#view-setup .btn:not(#btn-unlock):not(#btn-lock)';
+/** Everything on Set up that must be frozen when the lock is on. */
+const LOCKABLE = '#view-setup input, #view-setup select, #view-setup textarea, #view-setup button.btn';
 
-function applyLockState(assessment) {
-  const locked = isLocked(assessment);
-  $('#view-setup').classList.toggle('is-locked', locked);
-
-  for (const node of document.querySelectorAll(LOCKABLE)) {
-    node.disabled = locked;
-  }
-  if (!locked) {
-    // U is always fixed at 0, lock or no lock.
-    const uInput = $(`#boundary-${state.assessment.gradeBoundaries[0]?.grade}`);
-    if (uInput) uInput.disabled = true;
-  }
+function applyLockToSetup(assessment) {
+  applyLockState($('#view-setup'), assessment, LOCKABLE);
+  // U is always fixed at 0, lock or no lock.
+  const uGrade = assessment.gradeBoundaries[0]?.grade;
+  const uInput = uGrade ? $(`#boundary-${uGrade}`) : null;
+  if (uInput) uInput.disabled = true;
 }
-
-function renderLockBar(assessment) {
-  const enabled = isLockEnabled(assessment);
-  const locked = isLocked(assessment);
-  const bar = $('#lockbar');
-
-  bar.classList.toggle('is-locked', locked);
-  bar.classList.toggle('is-armed', enabled && !locked);
-  $('#lockbar-ico').textContent = locked ? '🔒' : '🔓';
-
-  if (locked) {
-    $('#lockbar-title').textContent = 'Set up is locked';
-    $('#lockbar-note').textContent = 'Marks can still be entered on the marksheet. '
-      + 'The PIN is needed to change questions, boundaries or the pupil list.';
-  } else if (enabled) {
-    $('#lockbar-title').textContent = 'Set up is unlocked for this session';
-    $('#lockbar-note').textContent = 'You entered the PIN. Close the browser tab to lock it again.';
-  } else {
-    $('#lockbar-title').textContent = 'Set up is unlocked';
-    $('#lockbar-note').textContent = 'Anyone using this browser can change the questions, boundaries and pupil list.';
-  }
-
-  $('#btn-unlock').hidden = !locked;
-  $('#btn-lock').hidden = locked;
-  $('#btn-lock').textContent = enabled ? 'Change or remove PIN' : 'Lock set up';
-}
-
-function openLockDialog() {
-  const assessment = state.assessment;
-  const alreadySet = isLockEnabled(assessment);
-  const pinInput = el('input', {
-    type: 'password', id: 'lock-pin', inputmode: 'numeric', autocomplete: 'off',
-    maxlength: '8', placeholder: '4 to 8 digits',
-  });
-  const error = el('div', { class: 'field-error', role: 'alert' });
-
-  const body = el('div', { class: 'grid', style: 'gap:14px' },
-    el('div', { class: 'callout callout-info' },
-      el('span', { class: 'ico', 'aria-hidden': 'true', text: 'ℹ️' }),
-      el('div', {},
-        el('strong', { text: 'What this does' }),
-        el('span', {
-          text: 'Locking freezes the questions, grade boundaries and pupil list so nobody '
-            + 'changes the paper while marks are being entered. Entering marks is unaffected. '
-            + 'It guards against mistakes, not against someone determined — the check happens '
-            + 'in the browser. Real staff permissions arrive with school accounts.',
-        }))),
-    el('div', { class: 'field' },
-      el('label', { for: 'lock-pin', text: alreadySet ? 'New PIN' : 'Choose a PIN' }),
-      pinInput,
-      el('span', { class: 'hint', text: 'Anyone who needs to change the set up will be asked for this. Write it down somewhere — it cannot be recovered.' })),
-    error,
-  );
-
-  openModal({
-    title: alreadySet ? 'Change the set up PIN' : 'Lock the set up page',
-    body,
-    buttons: [
-      { label: 'Cancel' },
-      ...(alreadySet ? [{
-        label: 'Remove lock',
-        onClick: () => {
-          // Session state first: update() re-renders, and the render must
-          // already see the new lock state or the screen lags a step behind.
-          setSessionUnlocked(true);
-          update((a) => { a.settings.lock = { enabled: false, pinHash: null, salt: null }; });
-          toast('Lock removed. Anyone can now edit the set up.', 'ok');
-        },
-      }] : []),
-      {
-        label: alreadySet ? 'Save new PIN' : 'Lock set up',
-        class: 'btn-primary',
-        close: false,
-        onClick: async () => {
-          const problem = validatePin(pinInput.value);
-          if (problem) { error.textContent = problem; pinInput.focus(); return; }
-          const lock = await buildLock(pinInput.value);
-          // Session state first, so the re-render inside update() already
-          // knows the page is locked.
-          setSessionUnlocked(false);
-          update((a) => { a.settings.lock = lock; });
-          closeModal();
-          toast('Set up locked. The questions, boundaries and pupil list are now read-only.', 'ok', 6000);
-        },
-      },
-    ],
-  });
-  setTimeout(() => pinInput.focus(), 60);
-}
-
-function openUnlockDialog() {
-  const pinInput = el('input', {
-    type: 'password', id: 'unlock-pin', inputmode: 'numeric', autocomplete: 'off',
-    maxlength: '8', placeholder: 'PIN',
-  });
-  const error = el('div', { class: 'field-error', role: 'alert' });
-
-  const attempt = async () => {
-    if (await pinMatches(state.assessment, pinInput.value)) {
-      setSessionUnlocked(true);
-      closeModal();
-      render(state.assessment);
-      toast('Set up unlocked for this session.', 'ok');
-    } else {
-      error.textContent = 'That PIN is not right.';
-      pinInput.select();
-    }
-  };
-
-  pinInput.addEventListener('keydown', (event) => {
-    if (event.key === 'Enter') { event.preventDefault(); attempt(); }
-  });
-
-  openModal({
-    title: 'Unlock the set up page',
-    body: el('div', { class: 'grid', style: 'gap:14px' },
-      el('p', { text: 'Enter the PIN chosen when this assessment was locked.' }),
-      el('div', { class: 'field' }, el('label', { for: 'unlock-pin', text: 'PIN' }), pinInput),
-      error),
-    buttons: [
-      { label: 'Cancel' },
-      { label: 'Unlock', class: 'btn-primary', close: false, onClick: attempt },
-    ],
-  });
-  setTimeout(() => pinInput.focus(), 60);
-}
-
-/** Used by the feedback page to decide whether the wording editor is available. */
-export { canEdit };

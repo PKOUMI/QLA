@@ -35,7 +35,8 @@ qla/
 │   ├── api.js                  talks to the backend
 │   ├── ui.js                   small DOM helpers
 │   ├── charts.js               SVG charts for the Analyse page
-│   ├── lock.js                 the Setup PIN lock
+│   ├── lock.js                 the PIN lock itself
+│   ├── lockbar.js              the lock bar and dialogs, shared by two pages
 │   └── views/
 │       ├── setup.js
 │       ├── marksheet.js

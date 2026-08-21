@@ -27,7 +27,8 @@ highest mark, plus grade distribution, topic/AO performance, question averages
 and a mark distribution with your boundaries drawn on. Each chart can be hidden
 or shown as a table.
 
-**Feedback** — pick who receives feedback, preview the exact email, then send.
+**Feedback** — preview the exact email built from a real pupil's marks, edit
+its wording directly on it, pick who receives it, then send.
 Each email contains the results summary, a question-by-question table, and three
 generated sections:
 
@@ -95,7 +96,8 @@ Two rules the code sticks to:
 | `js/feedback-engine.js` | What went well / Even better if / Focus on |
 | `js/api.js` | Batching, retries, duplicate-send protection |
 | `js/charts.js` | Dependency-free SVG charts for the Analyse page |
-| `js/lock.js` | The Setup PIN lock (deters accidents, is not security) |
+| `js/lock.js` | The PIN lock over Set up and Feedback (deters accidents, is not security) |
+| `js/lockbar.js` | The lock bar and its dialogs, shared by both pages |
 | `js/views/*.js` | One file per screen |
 | `shared/email-template.js` | The email — imported by browser **and** server |
 | `api/send-feedback.js` | The only thing that can send email |
