@@ -5,7 +5,7 @@
  * lets the same logic run in a browser, in a Node test, and (later) on a server.
  */
 
-export const SCHEMA_VERSION = 2;
+export const SCHEMA_VERSION = 3;
 
 /** Grades available for each paper tier, lowest first. */
 export const GRADE_SETS = {
@@ -67,7 +67,6 @@ export function newAssessment(overrides = {}) {
       // Kept separate from selectedPupilIds so a pupil can receive feedback
       // while their parents deliberately do not (e.g. safeguarding).
       parentSelectedPupilIds: [],
-      teacherNote: '',
     },
     // Admin controls. `unlocked` is session state, not a saved secret.
     settings: {
@@ -83,8 +82,12 @@ export function newAssessment(overrides = {}) {
         topicSort: 'weakest',  // 'weakest' | 'strongest' | 'name'
       },
     },
-    // Teacher/admin overrides for the wording of the feedback emails.
+    // Admin overrides for the wording of every feedback email.
     emailText: {},
+    // Overrides for ONE pupil, keyed by pupil id. Written only when someone
+    // edits an individual pupil's email from the Feedback table, and always
+    // applied on top of emailText for that pupil alone.
+    pupilEmailText: {},
     sendLog: [],
     ...overrides,
   };
@@ -172,6 +175,22 @@ export function migrate(raw) {
     },
   };
   doc.emailText = raw.emailText && typeof raw.emailText === 'object' ? raw.emailText : {};
+  doc.pupilEmailText = raw.pupilEmailText && typeof raw.pupilEmailText === 'object'
+    ? raw.pupilEmailText : {};
+
+  // v2 -> v3: the separate "a note from your teacher" block became an ordinary
+  // optional paragraph in the email wording. Carry any existing note across so
+  // nothing a teacher had already written is lost.
+  const legacyNote = typeof raw.feedback?.teacherNote === 'string' ? raw.feedback.teacherNote.trim() : '';
+  if (legacyNote) {
+    for (const audience of ['pupil', 'parent']) {
+      const existing = doc.emailText[audience] || {};
+      if (!existing.extraMessage) {
+        doc.emailText[audience] = { ...existing, extraMessage: legacyNote };
+      }
+    }
+  }
+  delete doc.feedback.teacherNote;
   delete doc.exam.className;
   delete doc.exam.teacherName;
   doc.questions = Array.isArray(raw.questions) && raw.questions.length

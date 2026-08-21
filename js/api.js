@@ -126,6 +126,8 @@ export async function sendFeedbackEmails(messages, context, onProgress = () => {
           type: message.type,
           to: message.to,
           data: message.data,
+          // Only present when this pupil's email has been edited on its own.
+          text: message.text || undefined,
         })),
       });
       results.push(...(response.results || []));

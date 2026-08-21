@@ -200,6 +200,7 @@
         <span>Show class averages</span>
       </label>
       <button class="btn btn-sm" id="btn-export-marks" type="button">Export CSV</button>
+      <button class="btn btn-sm btn-primary" id="btn-expand-marks" type="button" aria-pressed="false">Expand</button>
     </div>
     <div class="stats" id="marksheet-stats"></div>
     <div class="marksheet-wrap">
@@ -258,32 +259,27 @@
 <section class="view" id="view-feedback" aria-labelledby="feedback-title">
   <div class="view-head">
     <h1 id="feedback-title">Feedback</h1>
-    <p>Preview and edit the email, check who is receiving it, then send. Nothing is sent until you press <strong>Send feedback</strong> and confirm.</p>
+    <p>Check the email, choose who receives it, then send. Nothing is sent until you press <strong>Send feedback</strong> and confirm.</p>
   </div>
 
   <div class="lockbar" id="lockbar-feedback"></div>
 
   <div id="feedback-blocker"></div>
 
-  <!-- Send comes first: it is what the page is for, and it holds the preview. -->
+  <!-- 1. What is going out -->
   <div class="card">
-    <div class="card-head"><h2>Send</h2></div>
-    <div class="card-body">
-      <div id="api-status"></div>
-      <div id="send-progress" hidden>
-        <div class="progress-track"><div class="progress-bar" id="progress-bar"></div></div>
-        <div class="hint" id="progress-label" role="status" aria-live="polite">Preparing&hellip;</div>
-      </div>
-      <div id="send-results"></div>
-    </div>
-    <div class="card-foot">
-      <button class="btn btn-primary" id="btn-send" type="button">Send feedback</button>
-      <button class="btn" id="btn-preview-edit" type="button">Preview and edit email</button>
+    <div class="card-head">
+      <h2>Preview and edit email</h2>
       <div class="spacer"></div>
-      <span class="hint" id="send-hint"></span>
+      <button class="btn btn-primary" id="btn-preview-edit" type="button">Preview and edit email</button>
+      <p class="note-inline">Edits made here change the wording for <strong>every pupil</strong> in this assessment. To reword one pupil&rsquo;s email on its own, use <strong>View</strong> in their row of the table below.</p>
+    </div>
+    <div class="card-body">
+      <div id="email-summary"></div>
     </div>
   </div>
 
+  <!-- 2. Who it is going to -->
   <div class="card">
     <div class="card-head">
       <h2>Who gets feedback</h2>
@@ -291,7 +287,7 @@
       <div class="spacer"></div>
       <button class="btn btn-sm" id="btn-select-all" type="button">Select all</button>
       <button class="btn btn-sm" id="btn-select-none" type="button">Clear</button>
-      <p class="note-inline">The <strong>Parents</strong> column is separate on purpose: untick a pupil there to send feedback to them but not to their parents.</p>
+      <p class="note-inline">The <strong>Parents</strong> column is separate on purpose: untick a pupil there to send feedback to them but not to their parents. <strong>View</strong> opens that pupil&rsquo;s own email &mdash; anything you change there applies to that pupil alone.</p>
     </div>
     <div class="card-body flush">
       <div class="table-wrap">
@@ -311,7 +307,7 @@
               <th scope="col">Parent email</th>
               <th class="num" scope="col">Marks</th>
               <th scope="col" style="text-align:center">Grade</th>
-              <th scope="col" style="width:90px;text-align:center">Preview</th>
+              <th scope="col" style="width:90px;text-align:center">Email</th>
             </tr>
           </thead>
           <tbody id="send-body"></tbody>
@@ -320,6 +316,24 @@
     </div>
     <div class="card-foot">
       <div id="send-warnings" style="flex:1"></div>
+    </div>
+  </div>
+
+  <!-- 3. Send -->
+  <div class="card">
+    <div class="card-head"><h2>Send</h2></div>
+    <div class="card-body">
+      <div id="api-status"></div>
+      <div id="send-progress" hidden>
+        <div class="progress-track"><div class="progress-bar" id="progress-bar"></div></div>
+        <div class="hint" id="progress-label" role="status" aria-live="polite">Preparing&hellip;</div>
+      </div>
+      <div id="send-results"></div>
+    </div>
+    <div class="card-foot">
+      <button class="btn btn-primary" id="btn-send" type="button">Send feedback</button>
+      <div class="spacer"></div>
+      <span class="hint" id="send-hint"></span>
     </div>
   </div>
 

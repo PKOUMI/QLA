@@ -172,6 +172,9 @@ export const DEFAULT_EMAIL_TEXT = {
     focusHeading: 'Focus on',
     nothingFlagged: 'Nothing stood out as a particular strength or weakness this time — '
       + 'your marks were fairly even across the paper.',
+    // Optional. Left empty by default, and omitted from the email entirely
+    // when empty, so a teacher who writes nothing gets a tidy email.
+    extraMessage: '',
     closing: 'If anything here does not make sense, ask your teacher in your next lesson — '
       + 'that is exactly what this feedback is for.',
     signOff: 'Best wishes,',
@@ -188,6 +191,7 @@ export const DEFAULT_EMAIL_TEXT = {
     focusHeading: 'Focus on',
     nothingFlagged: 'No individual topics were flagged as particular strengths or weaknesses '
       + 'this time — performance was fairly even across the paper.',
+    extraMessage: '',
     closing: 'If you would like to discuss these results, please contact the school in the usual way.',
     signOff: 'Best wishes,',
     signOffName: 'Your child\'s teacher',
@@ -203,6 +207,7 @@ export const FIELD_LABELS = {
   ebiHeading: '“Even better if” heading',
   focusHeading: '“Focus on” heading',
   nothingFlagged: 'Shown when nothing stands out',
+  extraMessage: 'Optional message',
   closing: 'Closing paragraph',
   signOff: 'Sign-off',
   signOffName: 'Signed by',
@@ -317,15 +322,14 @@ export function renderFeedbackEmail(data, options = {}) {
     COLOURS.brand,
   );
 
-  const noteBlock = (data.teacherNote || editable) ? `
+  // One optional message, sitting after the feedback sections. Editable in the
+  // preview, and left out of the email completely when it is empty — no
+  // heading, no border, no empty box.
+  const extraMessage = asHtml('extraMessage');
+  const messageBlock = (words.extraMessage || editable) ? `
   <tr><td style="padding:0 0 18px 0;">
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
-           style="border-left:3px solid ${COLOURS.brand};background:${COLOURS.panel};border-radius:0 10px 10px 0;">
-      <tr><td style="padding:14px 18px;font-size:14px;line-height:22px;color:${COLOURS.body};">
-        <span style="display:block;font-size:11px;letter-spacing:.07em;text-transform:uppercase;color:${COLOURS.muted};padding-bottom:6px;">A note from ${esc(teacher)}</span>
-        <span${editable ? ' data-qla-edit="teacherNote" data-placeholder="Add an optional note to the whole class…"' : ''}>${esc(data.teacherNote).replace(/\n/g, '<br>')}</span>
-      </td></tr>
-    </table>
+    <p${edit('extraMessage')} data-placeholder="Optional message — click to add one, or leave it empty"
+       style="margin:0;font-size:15px;line-height:23px;color:${COLOURS.body};">${extraMessage}</p>
   </td></tr>` : '';
 
   const nothingFlagged = !wwwRows && !ebiRows;
@@ -367,11 +371,11 @@ export function renderFeedbackEmail(data, options = {}) {
             editable ? 'Topics to work on are listed here.' : '')}
           ${section(asHtml('focusHeading'), COLOURS.brand, '#eef2ff', focusRows, editable ? 'focusHeading' : '',
             editable ? 'Reteach links for the weakest topics are listed here.' : '')}
-          ${nothingFlagged || editable ? `
-          <tr><td${edit('nothingFlagged')} style="padding:0 0 16px 0;font-size:14px;line-height:22px;color:${COLOURS.muted};">
+          ${nothingFlagged ? `
+          <tr><td style="padding:0 0 16px 0;font-size:14px;line-height:22px;color:${COLOURS.muted};">
             ${asHtml('nothingFlagged')}
           </td></tr>` : ''}
-          ${noteBlock}
+          ${messageBlock}
         </table>
       </td></tr>
 
@@ -421,7 +425,7 @@ export function renderFeedbackEmail(data, options = {}) {
   if (data.focusOn.length) {
     lines.push('', focusTitle.toUpperCase(), ...data.focusOn.map((f) => `  - ${f.topic ? `${f.topic}: ` : ''}${f.url}`));
   }
-  if (data.teacherNote) lines.push('', `A note from ${teacher}:`, data.teacherNote);
+  if (words.extraMessage) lines.push('', say('extraMessage'));
   lines.push('', say('signOff'), teacher);
 
   return { subject, html, text: lines.join('\n') };

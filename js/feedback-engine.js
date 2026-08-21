@@ -138,7 +138,6 @@ export function buildPupilFeedback(assessment, pupil) {
     wentWell,
     evenBetterIf,
     focusOn,
-    teacherNote: assessment.feedback.teacherNote.trim(),
   };
 }
 

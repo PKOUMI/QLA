@@ -14,8 +14,48 @@ import { $, el, clear, toast, confirmDialog, downloadFile, plural, callout } fro
 import { state, update } from '../app.js';
 
 let showAverages = true;
+let isExpanded = false;
+
+/**
+ * Full-window mode.
+ *
+ * Entering marks for a whole class is the one job in this app that wants the
+ * entire screen: the page header, the stats and the surrounding cards are
+ * useful context right up until you are typing 200 numbers, at which point
+ * they are just fewer pupils on screen.
+ */
+function setExpanded(expanded) {
+  isExpanded = expanded;
+  document.body.classList.toggle('marks-expanded', expanded);
+
+  const button = $('#btn-expand-marks');
+  button.textContent = expanded ? 'Exit full screen' : 'Expand';
+  button.setAttribute('aria-pressed', String(expanded));
+  button.classList.toggle('btn-primary', !expanded);
+
+  const wrap = $('.marksheet-wrap');
+  if (wrap) {
+    // Expanded, the height comes from the flex layout, so the measured
+    // max-height has to get out of the way.
+    wrap.style.maxHeight = expanded ? '' : wrap.style.maxHeight;
+  }
+  if (!expanded) requestAnimationFrame(fitMarksheetHeight);
+
+  // Put focus somewhere useful rather than leaving it on a button that has
+  // just moved.
+  if (expanded) document.querySelector('.mark-input')?.focus();
+}
+
+// Escape is what everyone tries first to get out of a full-screen view.
+document.addEventListener('keydown', (event) => {
+  if (event.key === 'Escape' && isExpanded && !document.querySelector('#modal-backdrop.is-open')) {
+    setExpanded(false);
+  }
+});
 
 export function init() {
+  $('#btn-expand-marks').addEventListener('click', () => setExpanded(!isExpanded));
+
   $('#toggle-averages').addEventListener('change', (event) => {
     showAverages = event.target.checked;
     render(state.assessment);
@@ -58,8 +98,10 @@ function fitMarksheetHeight() {
 
   // Distance from the top of the document, so the result does not change as
   // the page is scrolled.
+  if (isExpanded) { wrap.style.maxHeight = ''; return; }   // flex owns the height
+
   const top = wrap.getBoundingClientRect().top + window.scrollY;
-  const roomBelow = 58;              // legend, card edge and a little breathing space
+  const roomBelow = 44;              // legend, card edge and a little breathing space
   const available = window.innerHeight - top - roomBelow;
   wrap.style.maxHeight = `${Math.max(240, Math.round(available))}px`;
 }

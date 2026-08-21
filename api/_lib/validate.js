@@ -81,6 +81,9 @@ export function validateRequest(body) {
       id: str(message.id, 80) || `msg_${index}`,
       type,
       to,
+      // Wording for THIS pupil only, when their email has been edited
+      // individually. Falls back to the assessment-wide wording below.
+      text: toWording(message.text),
       data: {
         pupilName: str(data.pupilName, LIMITS.maxNameLength) || 'Student',
         examName: str(data.examName, LIMITS.maxNameLength) || 'Assessment',
@@ -91,7 +94,6 @@ export function validateRequest(body) {
         grade: str(data.grade, 4),
         isComplete: data.isComplete !== false,
         blankCount: num(data.blankCount) ?? 0,
-        teacherNote: str(data.teacherNote, LIMITS.maxNoteLength),
         rows: rows.map((row) => ({
           number: str(row?.number, 12),
           topic: str(row?.topic, LIMITS.maxTopicLength),
@@ -130,7 +132,7 @@ export function validateRequest(body) {
  */
 const WORDING_KEYS = [
   'subject', 'greeting', 'intro', 'wwwHeading', 'ebiHeading', 'focusHeading',
-  'nothingFlagged', 'closing', 'signOff', 'signOffName',
+  'nothingFlagged', 'extraMessage', 'closing', 'signOff', 'signOffName',
 ];
 
 function toWording(value) {

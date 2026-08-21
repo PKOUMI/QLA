@@ -569,3 +569,43 @@ tr.avg-row .avg-pct{font-size:10.5px;opacity:.75;font-variant-numeric:tabular-nu
 
 /* Locked pages: the card contents recede, the lock bar does not. */
 .view.is-locked .lockbar{opacity:1}
+
+/* --- Marksheet: full-window mode ---------------------------------------- */
+/* Everything except the grid gets out of the way. The card becomes the page. */
+body.marks-expanded{overflow:hidden}
+body.marks-expanded .app-header,
+body.marks-expanded #view-marksheet .view-head,
+body.marks-expanded #view-marksheet #marksheet-blocker,
+body.marks-expanded #view-marksheet .card:not(#marksheet-card),
+body.marks-expanded #view-marksheet .view-nav{display:none}
+body.marks-expanded #marksheet-card{
+  position:fixed;inset:0;z-index:70;margin:0;border:0;border-radius:0;
+  display:flex;flex-direction:column;box-shadow:none;
+}
+body.marks-expanded #marksheet-card .marksheet-wrap{
+  flex:1 1 auto;min-height:0;max-height:none;
+}
+body.marks-expanded #marksheet-card .card-head{flex:none;padding:8px 16px}
+body.marks-expanded #marksheet-card .legend{flex:none;padding:4px 16px}
+/* Expanded, the stats become a single line so the space goes to pupils. */
+body.marks-expanded #marksheet-card .stats{
+  flex:none;grid-template-columns:repeat(auto-fit,minmax(120px,auto));justify-content:start;
+}
+body.marks-expanded #marksheet-card .stat{display:flex;align-items:baseline;gap:7px;padding:5px 14px}
+body.marks-expanded #marksheet-card .stat .v{font-size:15px}
+body.marks-expanded #marksheet-card .stat .k{margin-top:0;font-size:10px}
+
+/* --- Short screens: trade page furniture for rows ----------------------- */
+@media (max-height:820px){
+  #view-marksheet .view-head{margin-bottom:8px}
+  #view-marksheet .view-head p{display:none}
+  #view-marksheet .stat{padding:6px 14px}
+  #view-marksheet .stat .v{font-size:17px}
+  #view-marksheet .stat .k{font-size:10px;margin-top:1px}
+  #view-marksheet .legend{padding:5px 18px}
+}
+
+/* --- Feedback: scope of an edit ----------------------------------------- */
+.scope-banner{grid-column:1 / -1;margin:0}
+.scope-banner strong{display:block}
+.confirm-lead{margin:0 0 10px;font-size:15.5px;color:var(--ink)}

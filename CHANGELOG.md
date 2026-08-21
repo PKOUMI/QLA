@@ -1,5 +1,55 @@
 # Changelog
 
+## v4 — change request of 21 August 2026
+
+### Marksheet
+- **Expand button.** The grid takes over the whole window — page header, page
+  title and surrounding cards all step aside, and the stats compress to a
+  single line. **Exit full screen**, or just press `Esc`, brings it back.
+  On a 1280×610 laptop that is **11 pupils on screen at once**.
+- The normal view got taller too. On short screens the page title's
+  explanation, the stats padding and the legend all shrink automatically, and
+  the measured gap below the grid was tightened. Same laptop: **7 rows, up
+  from about 4**.
+
+### Feedback
+- Page order is now **Preview and edit email → Who gets feedback → Send**.
+- **The confirmation dialog now always appears.** It was being skipped when no
+  email backend was configured, because the app bailed out before asking. The
+  check now happens after you confirm, so pressing Send always asks first and
+  then tells you honestly what happened.
+- The dialog itself is more explicit: how many pupils, how many parents, how
+  many emails, and that emails cannot be recalled.
+
+### The email
+- **The "a note from your teacher" block is gone.** In its place is a single
+  optional message, sitting straight after **Focus on**. Write in it or leave
+  it empty; when it is empty the email simply has nothing there — no heading,
+  no border, no empty box. Any note you had already written is carried across
+  automatically.
+- The "nothing stood out this time" line is no longer separately editable, so
+  there is now exactly one editable box after Focus on, as asked.
+
+### Editing one pupil's email
+- **View** in a pupil's row now opens that pupil's own email, and anything
+  changed there applies **to that pupil alone**.
+- The scope is stated in three places: a note under the table, a note on the
+  Preview card, and a banner inside the dialog itself — amber for one pupil,
+  blue for the whole class. The save button names the pupil too
+  ("Save for Amelia only").
+- Pupils with their own wording get an **own wording** badge in the table and
+  are listed on the Preview card, so it is obvious who has been customised.
+- **Use the class wording** puts an individual pupil back to the standard text.
+- Editing the class-wide wording does not overwrite a pupil who has their own.
+- Per-pupil wording travels with the send, so an individually edited email is
+  delivered exactly as previewed.
+
+### Data
+- Schema version 3. Assessments saved by v2 or v1 load unchanged; the old
+  teacher note becomes the new optional message.
+
+---
+
 ## v3 — change request of 21 August 2026
 
 ### Marksheet

@@ -25,7 +25,7 @@ export function init() {
   $('#check-all').addEventListener('change', (event) => setSelection(event.target.checked ? 'all' : 'none'));
   $('#check-all-parents').addEventListener('change', (event) => setParentSelection(event.target.checked));
 
-  $('#btn-preview-edit').addEventListener('click', () => openPreview(examplePupil(state.assessment)));
+  $('#btn-preview-edit').addEventListener('click', () => openPreview(examplePupil(state.assessment), 'class'));
 
   $('#btn-send').addEventListener('click', handleSend);
 }
@@ -74,6 +74,7 @@ export function render(assessment) {
     assessment.feedback.selectedPupilIds = sendablePupils(assessment).map((p) => p.id);
   }
 
+  renderEmailSummary(assessment);
   renderSendTable(assessment);
   renderApiStatus();
   renderSendResults();
@@ -139,6 +140,9 @@ function renderSendTable(assessment) {
     const badges = el('div', { class: 'reasons' },
       ...status.blockedReasons.map((reason) => el('span', { class: 'badge badge-bad', text: reason })),
       ...status.warnings.map((warning) => el('span', { class: 'badge badge-warn', text: warning })),
+      hasPersonalWording(assessment, pupil.id)
+        ? el('span', { class: 'badge badge-brand', title: 'This pupil\'s email has been edited on its own', text: 'own wording' })
+        : null,
 
     );
 
@@ -190,7 +194,8 @@ function renderSendTable(assessment) {
         el('button', {
           class: 'btn btn-sm btn-ghost', type: 'button',
           disabled: !result.hasAnyMark,
-          onclick: () => openPreview(pupil),
+          title: `Open and edit ${pupil.name || 'this pupil'}'s own email`,
+          onclick: () => openPreview(pupil, 'pupil'),
         }, 'View')),
     ));
   });
@@ -237,12 +242,35 @@ function updateCounts(assessment) {
 /* --- Preview and edit ---------------------------------------------------- */
 
 /**
+ * Wording for one pupil: the defaults, then any assessment-wide edits, then
+ * anything edited for that pupil alone. Used for the preview AND for sending,
+ * so what is previewed is what is sent.
+ */
+export function wordingFor(assessment, pupilId) {
+  const shared = assessment.emailText || {};
+  const personal = (assessment.pupilEmailText || {})[pupilId] || {};
+  const merge = (audience) => ({
+    ...DEFAULT_EMAIL_TEXT[audience],
+    ...(shared[audience] || {}),
+    ...(personal[audience] || {}),
+  });
+  return { pupil: merge('pupil'), parent: merge('parent') };
+}
+
+/** Has this pupil's email been reworded on its own? */
+function hasPersonalWording(assessment, pupilId) {
+  const personal = (assessment.pupilEmailText || {})[pupilId];
+  if (!personal) return false;
+  return ['pupil', 'parent'].some((a) => personal[a] && Object.keys(personal[a]).length > 0);
+}
+
+/**
  * One screen for both jobs: it shows the real email, built from a real pupil's
  * marks, and lets the wording be edited directly on it.
  *
- * Why edit on the email rather than in a list of fields: the teacher is
- * changing how the email READS, and the only way to judge that is to see it in
- * place, next to the results it wraps around.
+ * Two scopes, and the difference matters enough to be stated on screen:
+ *   scope 'class'  — opened from the button above; edits every pupil's email
+ *   scope 'pupil'  — opened from a row's View; edits that pupil's email only
  *
  * The mechanism: the template marks its editable text with `data-qla-edit` and
  * wraps every substituted {placeholder} in a `data-qla-ph` span. The preview
@@ -254,7 +282,7 @@ function updateCounts(assessment) {
  * run. It keeps allow-same-origin only so this page can reach in and wire up
  * the editing.
  */
-function openPreview(pupil) {
+function openPreview(pupil, scope = 'class') {
   const assessment = state.assessment;
   if (!pupil) { toast('Add a pupil first.', 'warn'); return; }
 
@@ -265,15 +293,16 @@ function openPreview(pupil) {
   }
 
   const editable = canEdit(assessment);
+  const perPupil = scope === 'pupil';
+  const pupilName = data.pupilName || 'this pupil';
   let audience = 'pupil';
   let dirty = false;
 
   // Everything is edited on a copy, so Cancel really does cancel.
-  const draft = {
-    pupil: { ...DEFAULT_EMAIL_TEXT.pupil, ...(assessment.emailText?.pupil || {}) },
-    parent: { ...DEFAULT_EMAIL_TEXT.parent, ...(assessment.emailText?.parent || {}) },
-  };
-  let teacherNote = assessment.feedback.teacherNote || '';
+  const draft = wordingFor(assessment, pupil.id);
+  // What the pupil would get with no personal edits — used to work out which
+  // fields the teacher has actually changed for them.
+  const baseline = wordingFor(assessment, null);
 
   const frame = el('iframe', {
     class: 'preview-frame',
@@ -317,11 +346,12 @@ function openPreview(pupil) {
     for (const button of tabs.querySelectorAll('button')) {
       button.classList.toggle('btn-primary', button.dataset.audience === audience);
     }
-    $('#modal-title').textContent = editable ? 'Preview and edit email' : 'Preview email';
-    status.textContent = `Showing ${data.pupilName || 'the first pupil'}'s real results — ${subject}`;
+    $('#modal-title').textContent = perPupil
+      ? `${pupilName}'s email`
+      : (editable ? 'Preview and edit email' : 'Preview email');
+    status.textContent = `Built from ${pupilName}'s real results — ${subject}`;
   };
 
-  // Wire up editing once the iframe has rendered its document.
   frame.addEventListener('load', () => {
     const doc = frame.contentDocument;
     if (!doc || !editable) return;
@@ -331,10 +361,10 @@ function openPreview(pupil) {
     const style = doc.createElement('style');
     style.textContent = `
       [data-qla-edit]{outline:1px dashed rgba(79,70,229,.35);outline-offset:3px;border-radius:3px;
-        transition:background .12s;cursor:text;white-space:pre-wrap;}
+        transition:background .12s;cursor:text;white-space:pre-wrap;display:block;min-height:1em;}
       [data-qla-edit]:hover{background:rgba(79,70,229,.06)}
       [data-qla-edit]:focus{outline:2px solid #4f46e5;background:#fff;}
-      [data-qla-ph]{background:rgba(79,70,229,.12);border-radius:3px;padding:0 2px;}
+      [data-qla-ph]{background:rgba(79,70,229,.12);border-radius:3px;padding:0 2px;display:inline;}
       [data-qla-edit]:empty::before{content:attr(data-placeholder);color:#94a3b8;font-style:italic;}
     `;
     doc.head.appendChild(style);
@@ -343,10 +373,7 @@ function openPreview(pupil) {
       region.contentEditable = 'true';
       region.spellcheck = true;
       region.addEventListener('input', () => {
-        const key = region.dataset.qlaEdit;
-        const value = readBack(region).replace(/\u00a0/g, ' ');
-        if (key === 'teacherNote') teacherNote = value.trim();
-        else draft[audience][key] = value;
+        draft[audience][region.dataset.qlaEdit] = readBack(region).replace(/\u00a0/g, ' ');
         dirty = true;
       });
       // Keep line breaks simple: Enter inserts a <br>, never a new block.
@@ -366,11 +393,25 @@ function openPreview(pupil) {
     }, label));
   }
 
+  // The scope of an edit is not something to leave anyone guessing about.
+  const scopeBanner = perPupil
+    ? el('div', { class: 'callout callout-warn scope-banner' },
+      el('span', { class: 'ico', 'aria-hidden': 'true', text: '⚠️' }),
+      el('div', {},
+        el('strong', { text: `You are editing ${pupilName}'s email only` }),
+        el('span', { text: 'Nothing you change here affects any other pupil. To change the wording for the whole class, close this and use “Preview and edit email” at the top of the page.' })))
+    : el('div', { class: 'callout callout-info scope-banner' },
+      el('span', { class: 'ico', 'aria-hidden': 'true', text: 'ℹ️' }),
+      el('div', {},
+        el('strong', { text: 'You are editing the email for every pupil' }),
+        el('span', { text: `Shown with ${pupilName}'s results as an example. Pupils whose email you have edited individually keep their own wording.` })));
+
   const toolbar = el('div', { class: 'preview-toolbar' },
     tabs,
     el('div', { class: 'field preview-subject' },
       el('label', { for: 'preview-subject', class: 'label', text: 'Subject line' }),
       subjectInput),
+    scopeBanner,
     editable
       ? el('p', { class: 'hint preview-tip' },
         'Click any highlighted text on the email to change it. ',
@@ -380,35 +421,90 @@ function openPreview(pupil) {
     status,
   );
 
+  /** Keep only the fields that actually differ from the class-wide wording. */
+  const personalDiff = () => {
+    const out = {};
+    for (const aud of ['pupil', 'parent']) {
+      const changed = {};
+      for (const [key, value] of Object.entries(draft[aud])) {
+        if (value !== baseline[aud][key]) changed[key] = value;
+      }
+      if (Object.keys(changed).length) out[aud] = changed;
+    }
+    return out;
+  };
+
+  const saveButtons = perPupil
+    ? [
+      { label: 'Cancel' },
+      ...(hasPersonalWording(assessment, pupil.id) ? [{
+        label: 'Use the class wording',
+        onClick: () => {
+          update((a) => { delete a.pupilEmailText[pupil.id]; });
+          toast(`${pupilName}'s email is back to the wording used for the class.`, 'ok');
+        },
+      }] : []),
+      {
+        label: `Save for ${pupilName.split(' ')[0] || 'this pupil'} only`,
+        class: 'btn-primary',
+        onClick: () => {
+          const diff = personalDiff();
+          update((a) => {
+            if (Object.keys(diff).length) a.pupilEmailText[pupil.id] = diff;
+            else delete a.pupilEmailText[pupil.id];
+          });
+          toast(dirty
+            ? `Saved for ${pupilName} only. No other pupil's email has changed.`
+            : 'No changes to save.', 'ok', 6000);
+        },
+      },
+    ]
+    : [
+      { label: 'Cancel' },
+      {
+        label: 'Reset wording',
+        onClick: () => {
+          update((a) => { a.emailText = {}; });
+          toast('Email wording reset to the default. Individual pupils keep their own wording.', 'ok', 6000);
+        },
+      },
+      {
+        label: 'Save for everyone',
+        class: 'btn-primary',
+        onClick: () => {
+          update((a) => {
+            a.emailText = { pupil: { ...draft.pupil }, parent: { ...draft.parent } };
+          });
+          toast(dirty ? 'Email wording saved for every pupil in this assessment.' : 'No changes to save.', 'ok');
+        },
+      },
+    ];
+
   openModal({
     title: 'Preview',
     body: el('div', { class: 'preview-shell' }, toolbar, frame),
     wide: true,
-    buttons: editable
-      ? [
-        { label: 'Cancel' },
-        {
-          label: 'Reset wording',
-          onClick: () => {
-            update((a) => { a.emailText = {}; });
-            toast('Email wording reset to the default.', 'ok');
-          },
-        },
-        {
-          label: 'Save wording',
-          class: 'btn-primary',
-          onClick: () => {
-            update((a) => {
-              a.emailText = { pupil: { ...draft.pupil }, parent: { ...draft.parent } };
-              a.feedback.teacherNote = teacherNote;
-            });
-            toast(dirty ? 'Email wording saved for every pupil in this assessment.' : 'No changes to save.', 'ok');
-          },
-        },
-      ]
-      : [{ label: 'Close' }],
+    buttons: editable ? saveButtons : [{ label: 'Close' }],
   });
   paint();
+}
+
+/** A short summary of the email, shown on the Feedback page itself. */
+function renderEmailSummary(assessment) {
+  const node = clear($('#email-summary'));
+  const customised = assessment.pupils.filter((p) => hasPersonalWording(assessment, p.id));
+  const edited = Object.keys(assessment.emailText || {}).length > 0;
+
+  node.append(el('p', { class: 'muted', style: 'margin:0 0 8px' },
+    edited
+      ? 'The wording of these emails has been edited for this assessment.'
+      : 'These emails use the standard wording: results, a question-by-question breakdown, what went well, even better if, and focus on.'));
+
+  if (customised.length) {
+    node.append(callout('info', `${plural(customised.length, 'pupil')} ${customised.length === 1 ? 'has' : 'have'} an individually edited email`,
+      customised.slice(0, 6).map((p) => p.name || 'Unnamed pupil')
+        .concat(customised.length > 6 ? [`…and ${customised.length - 6} more.`] : [])));
+  }
 }
 
 /* --- API status ---------------------------------------------------------- */
@@ -429,14 +525,6 @@ async function handleSend() {
   const messages = buildMessages(assessment);
   if (messages.length === 0) { toast('Nothing to send.', 'warn'); return; }
 
-  // Fail fast and clearly rather than reporting the same error once per pupil.
-  if (!isConfigured()) {
-    clear($('#send-results')).append(callout('bad', 'Nothing was sent',
-      'No email backend is configured. Open Settings and enter the address of your deployed API — see DEPLOYMENT.md for how to deploy it.'));
-    toast('No email backend configured — nothing was sent.', 'bad', 8000);
-    return;
-  }
-
   const pupilCount = messages.filter((m) => m.type === 'pupil').length;
   const parentCount = messages.filter((m) => m.type === 'parent').length;
 
@@ -450,14 +538,29 @@ async function handleSend() {
     : null;
 
   const confirmed = await confirmDialog({
-    title: 'Send feedback?',
+    title: 'Send feedback now?',
     message: el('div', {},
-      el('p', { style: 'margin:0 0 8px', text: `You are about to send feedback to ${plural(pupilCount, 'pupil')}${parentCount ? ` and ${plural(parentCount, 'parent')}` : ''}.` }),
-      el('p', { style: 'margin:0;color:var(--muted);font-size:13.5px', text: `That is ${plural(messages.length, 'email')} in total. This cannot be undone.` }),
+      el('p', { class: 'confirm-lead' },
+        'You are about to email ',
+        el('strong', { text: plural(pupilCount, 'pupil') }),
+        parentCount ? ' and ' : '',
+        parentCount ? el('strong', { text: plural(parentCount, 'parent') }) : '',
+        '.'),
+      el('p', { style: 'margin:0 0 10px', text: `That is ${plural(messages.length, 'email')} in total. Emails cannot be recalled once they are sent.` }),
+      el('p', { class: 'hint', style: 'margin:0', text: 'Check the marks are final and that you are happy with the wording before continuing.' }),
       warning),
-    confirmLabel: `Send ${plural(messages.length, 'email')}`,
+    confirmLabel: `Yes, send ${plural(messages.length, 'email')}`,
   });
   if (!confirmed) return;
+
+  // Only now check the backend: the teacher has confirmed their intent, so if
+  // this fails they get a clear reason rather than a dialog that led nowhere.
+  if (!isConfigured()) {
+    clear($('#send-results')).append(callout('bad', 'Nothing was sent',
+      'No email backend is configured. Open Settings and enter the address of your deployed API — see DEPLOYMENT.md for how to deploy it.'));
+    toast('No email backend configured — nothing was sent.', 'bad', 8000);
+    return;
+  }
 
   isSending = true;
   const button = $('#btn-send');
@@ -482,7 +585,6 @@ async function handleSend() {
         batchId,
         replyTo: assessment.exam.teacherEmail,
         schoolName: window.QLA_CONFIG?.schoolName || '',
-        text: assessment.emailText,
       },
       ({ done, total }) => {
         bar.style.width = `${Math.round((done / total) * 100)}%`;
@@ -531,13 +633,16 @@ function buildMessages(assessment) {
     if (!status.canSend) continue;
 
     const data = buildPupilFeedback(assessment, pupil);
-    messages.push({ id: `${pupil.id}:pupil`, type: 'pupil', to: pupil.email.trim(), data });
+    // Sent with this pupil's own wording, so an individually edited email is
+    // delivered exactly as it was previewed.
+    const text = wordingFor(assessment, pupil.id);
+    messages.push({ id: `${pupil.id}:pupil`, type: 'pupil', to: pupil.email.trim(), data, text });
 
     // Parent email only when this pupil's own Parents tick is on AND an
     // address exists. The master toggle only sets those ticks; it is never
     // consulted here, so an individual exclusion always wins.
     if (parentSelected.has(pupil.id) && pupil.parentEmail.trim()) {
-      messages.push({ id: `${pupil.id}:parent`, type: 'parent', to: pupil.parentEmail.trim(), data });
+      messages.push({ id: `${pupil.id}:parent`, type: 'parent', to: pupil.parentEmail.trim(), data, text });
     }
   }
   return messages;

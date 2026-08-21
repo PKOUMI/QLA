@@ -338,7 +338,7 @@ onto Postgres tables later (the table split is noted against each part).
 
 ```jsonc
 {
-  "schemaVersion": 2,
+  "schemaVersion": 3,
   "id": "asmt_lz3k9x2p",              // -> assessments.id
   "createdAt": "2026-08-20T10:00:00Z",
   "updatedAt": "2026-08-20T10:42:11Z",
@@ -383,10 +383,9 @@ onto Postgres tables later (the table split is noted against each part).
   "feedback": {                        // -> assessment settings
     "sendToParents": false,            // master switch for the Parents column
     "selectedPupilIds": ["p_1"],
-    "parentSelectedPupilIds": ["p_1"], // separate, so a pupil can be emailed
+    "parentSelectedPupilIds": ["p_1"]  // separate, so a pupil can be emailed
                                        // while their parents deliberately are
                                        // not (safeguarding)
-    "teacherNote": "Well done everyone..."
   },
 
   "settings": {                        // -> becomes per-user/per-school rows
@@ -403,10 +402,14 @@ onto Postgres tables later (the table split is noted against each part).
     }
   },
 
-  "emailText": {                       // admin overrides for the email wording
-    "pupil":  { "greeting": "Hi {firstName},", "signOff": "Best wishes," },
+  "emailText": {                       // wording for EVERY pupil's email
+    "pupil":  { "greeting": "Hi {firstName},", "extraMessage": "" },
     "parent": { "greeting": "Dear Parent / Guardian," }
   },
+
+  "pupilEmailText": {                  // wording for ONE pupil, keyed by id.
+    "p_1": { "pupil": { "greeting": "A quick word, {firstName}." } }
+  },                                   // merged over emailText for that pupil
 
   "sendLog": [                         // -> send_log (audit trail)
     { "at": "...", "batchId": "...", "sent": 24, "failed": 0 }

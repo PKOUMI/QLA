@@ -16,7 +16,7 @@ import { buildPupilFeedback, pupilSendStatus } from '../js/feedback-engine.js';
 import { validateMark, validateAssessment, isValidEmail, isValidUrl, csvSafeCell } from '../js/validation.js';
 import { parsePupilCsv, parseCsv, toCsv } from '../js/csv.js';
 import { buildLock, pinMatches, validatePin } from '../js/lock.js';
-import { renderFeedbackEmail } from '../shared/email-template.js';
+import { renderFeedbackEmail, DEFAULT_EMAIL_TEXT } from '../shared/email-template.js';
 
 let passed = 0;
 let failed = 0;
@@ -680,16 +680,44 @@ test('every heading is reachable in the preview even when its section is empty',
   assert.ok(preview.html.includes('Even better if'));
 });
 
-test('the class note block appears in the preview so it can be written there', () => {
+test('the optional message is left out of an email that has none', () => {
   const a = fixture();
   a.questions.forEach((q) => setMark(a, a.pupils[0].id, q.id, 3));
   const fb = buildPupilFeedback(a, a.pupils[0]);
-  assert.equal(fb.teacherNote, '');
 
   const real = renderFeedbackEmail(fb, { audience: 'pupil' });
+  // No empty box, no stray heading, no leftover border.
+  assert.equal(real.html.includes('data-placeholder'), false);
+  assert.equal(real.html.includes('A note from'), false, 'the old teacher-note block is gone');
+
   const preview = renderFeedbackEmail(fb, { audience: 'pupil', editable: true });
-  assert.equal(real.html.includes('A note from'), false, 'an empty note is not sent');
-  assert.ok(preview.html.includes('data-qla-edit="teacherNote"'));
+  assert.ok(preview.html.includes('data-qla-edit="extraMessage"'), 'but it can be written in the preview');
+});
+
+test('the optional message appears once written, in the email and the plain text', () => {
+  const a = fixture();
+  a.questions.forEach((q) => setMark(a, a.pupils[0].id, q.id, 3));
+  const fb = buildPupilFeedback(a, a.pupils[0]);
+  const { html, text } = renderFeedbackEmail(fb, {
+    audience: 'pupil',
+    text: { pupil: { extraMessage: 'Bring your corrections to Thursday.' } },
+  });
+  assert.ok(html.includes('Bring your corrections to Thursday.'));
+  assert.ok(text.includes('Bring your corrections to Thursday.'));
+});
+
+test('exactly one editable box follows the Focus on section', () => {
+  const a = fixture();
+  a.questions.forEach((q) => setMark(a, a.pupils[0].id, q.id, 3));
+  const fb = buildPupilFeedback(a, a.pupils[0]);
+  const { html } = renderFeedbackEmail(fb, { audience: 'pupil', editable: true });
+
+  const afterFocus = html.slice(html.indexOf('Focus on'));
+  const keys = [...afterFocus.matchAll(/data-qla-edit="(\w+)"/g)].map((m) => m[1]);
+  // The sign-off is part of the letter's ending, not the message area.
+  assert.deepEqual(keys, ['extraMessage', 'closing', 'signOff', 'signOffName']);
+  assert.equal(keys.filter((k) => k === 'nothingFlagged').length, 0,
+    'the "nothing stood out" line is no longer a second box');
 });
 
 test('a name containing markup cannot escape the placeholder marker', () => {
@@ -700,6 +728,63 @@ test('a name containing markup cannot escape the placeholder marker', () => {
   const { html } = renderFeedbackEmail(fb, { audience: 'pupil', editable: true });
   assert.equal(html.includes('<b>Evil</b>'), false);
   assert.ok(html.includes('&lt;b&gt;'));
+});
+
+/* ==================== per-pupil email wording =========================== */
+
+// Mirrors wordingFor() in views/feedback.js: defaults, then the assessment's
+// wording, then anything set for one pupil alone.
+function mergedWording(assessment, pupilId) {
+  const shared = assessment.emailText || {};
+  const personal = (assessment.pupilEmailText || {})[pupilId] || {};
+  const merge = (audience) => ({
+    ...DEFAULT_EMAIL_TEXT[audience],
+    ...(shared[audience] || {}),
+    ...(personal[audience] || {}),
+  });
+  return { pupil: merge('pupil'), parent: merge('parent') };
+}
+
+test('a pupil with their own wording overrides the class wording', () => {
+  const a = fixture();
+  a.emailText = { pupil: { greeting: 'Hello {firstName},' } };
+  a.pupilEmailText = { [a.pupils[0].id]: { pupil: { greeting: 'A word, {firstName}.' } } };
+
+  assert.equal(mergedWording(a, a.pupils[0].id).pupil.greeting, 'A word, {firstName}.');
+  assert.equal(mergedWording(a, 'someone_else').pupil.greeting, 'Hello {firstName},',
+    'every other pupil keeps the class wording');
+});
+
+test('a pupil override only changes the fields it names', () => {
+  const a = fixture();
+  a.emailText = { pupil: { greeting: 'Hello {firstName},', closing: 'See me.' } };
+  a.pupilEmailText = { p1: { pupil: { greeting: 'Hi.' } } };
+  const merged = mergedWording(a, 'p1').pupil;
+  assert.equal(merged.greeting, 'Hi.');
+  assert.equal(merged.closing, 'See me.', 'untouched fields still come from the class wording');
+  assert.equal(merged.wwwHeading, DEFAULT_EMAIL_TEXT.pupil.wwwHeading);
+});
+
+test('a pupil override reaches the rendered email', () => {
+  const a = fixture();
+  a.pupils[0].name = 'Amelia Stone';
+  a.questions.forEach((q) => setMark(a, a.pupils[0].id, q.id, 3));
+  a.pupilEmailText = { [a.pupils[0].id]: { pupil: { greeting: 'Amelia — a note for you.' } } };
+
+  const fb = buildPupilFeedback(a, a.pupils[0]);
+  const { html } = renderFeedbackEmail(fb, {
+    audience: 'pupil',
+    text: mergedWording(a, a.pupils[0].id),
+  });
+  assert.ok(html.includes('Amelia — a note for you.'));
+});
+
+test('clearing a pupil override returns them to the class wording', () => {
+  const a = fixture();
+  a.emailText = { pupil: { greeting: 'Hello {firstName},' } };
+  a.pupilEmailText = { p1: { pupil: { greeting: 'Hi.' } } };
+  delete a.pupilEmailText.p1;
+  assert.equal(mergedWording(a, 'p1').pupil.greeting, 'Hello {firstName},');
 });
 
 /* ============================== setup lock ============================== */
