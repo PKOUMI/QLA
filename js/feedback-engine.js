@@ -11,7 +11,7 @@
  */
 
 import { getMark, WWW_THRESHOLD, EBI_THRESHOLD } from './model.js';
-import { pupilResult, round } from './grades.js';
+import { pupilResult } from './grades.js';
 import { safeUrl } from './validation.js';
 
 /**
@@ -127,14 +127,11 @@ export function buildPupilFeedback(assessment, pupil) {
     parentEmail: pupil.parentEmail.trim(),
     examName: assessment.exam.name.trim(),
     subject: assessment.exam.subject.trim(),
-    className: assessment.exam.className.trim(),
-    teacherName: assessment.exam.teacherName.trim(),
     examDate: assessment.exam.date,
-    totalMarks: result.achieved,
+    totalMarks: result.total,
     totalPossible: result.possible,
-    percentage: round(result.percentage, 0),
     grade: result.grade,
-    isProvisional: result.isProvisional,
+    isComplete: result.isComplete,
     blankCount: result.blankCount,
     hasAnyMark: result.hasAnyMark,
     rows,
@@ -165,9 +162,12 @@ export function pupilSendStatus(assessment, pupil) {
 
   if (!pupil.email.trim()) reasons.push('No email address');
   if (!result.hasAnyMark && assessment.exam.blankPolicy !== 'zero') reasons.push('No marks entered');
+  // A part-marked paper has no honest total or grade, so it cannot be sent.
+  if (result.hasAnyMark && !result.isComplete) {
+    reasons.push(`${result.blankCount} question${result.blankCount === 1 ? '' : 's'} not marked`);
+  }
 
   const warnings = [];
-  if (result.isProvisional) warnings.push(`${result.blankCount} question${result.blankCount === 1 ? '' : 's'} not marked`);
   if (pupil.email.trim() && !pupil.parentEmail.trim()) warnings.push('No parent email');
 
   return {

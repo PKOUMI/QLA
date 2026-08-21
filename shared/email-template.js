@@ -123,9 +123,8 @@ function questionTable(rows) {
 }
 
 function scorePanel(data) {
-  const pct = data.percentage === null || data.percentage === undefined ? '—' : `${data.percentage}%`;
   const cell = (label, value, big) => `
-    <td width="33.33%" align="center" style="padding:14px 8px;">
+    <td width="50%" align="center" style="padding:14px 8px;">
       <div style="font-size:${big ? '30px' : '26px'};line-height:1.1;font-weight:700;color:${COLOURS.ink};">${value}</div>
       <div style="font-size:11px;letter-spacing:.07em;text-transform:uppercase;color:${COLOURS.muted};padding-top:6px;">${esc(label)}</div>
     </td>`;
@@ -134,19 +133,98 @@ function scorePanel(data) {
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
            style="background:${COLOURS.panel};border:1px solid ${COLOURS.line};border-radius:10px;">
       <tr>
-        ${cell('Marks', `${esc(data.totalMarks)}<span style="font-size:16px;color:${COLOURS.muted};font-weight:500;">/${esc(data.totalPossible)}</span>`, false)}
-        ${cell('Percentage', esc(pct), false)}
+        ${cell('Marks', `${esc(data.totalMarks ?? '—')}<span style="font-size:16px;color:${COLOURS.muted};font-weight:500;">/${esc(data.totalPossible)}</span>`, false)}
         ${cell('Grade', `<span style="color:${COLOURS.brand};">${esc(data.grade ?? '—')}</span>`, true)}
       </tr>
     </table>
   </td></tr>`;
 }
 
+/* ------------------------------------------------- editable wording ------ */
+
+/**
+ * The fixed wording of a feedback email. An admin can override any of these
+ * from the Feedback page; the marks, grades and question breakdown are always
+ * generated from the marksheet and are deliberately NOT editable.
+ *
+ * {placeholders} are filled in per pupil. Anything unrecognised is left alone,
+ * so a stray brace in someone's wording cannot break the email.
+ */
+export const DEFAULT_EMAIL_TEXT = {
+  pupil: {
+    subject: 'Your {examName} results',
+    greeting: 'Hi {firstName},',
+    intro: 'Here are your results for {examName}. Below you can see how you did on each '
+      + 'question, what went well, and the topics worth spending a bit more time on.',
+    wwwHeading: 'What went well',
+    ebiHeading: 'Even better if',
+    focusHeading: 'Focus on',
+    nothingFlagged: 'Nothing stood out as a particular strength or weakness this time — '
+      + 'your marks were fairly even across the paper.',
+    closing: 'If anything here does not make sense, ask your teacher in your next lesson — '
+      + 'that is exactly what this feedback is for.',
+    signOff: 'Best wishes,',
+    signOffName: 'Your teacher',
+  },
+  parent: {
+    subject: '{examName} — results for {fullName}',
+    greeting: 'Dear Parent / Guardian,',
+    intro: 'Here are {fullName}\'s results for {examName}, together with a breakdown of how '
+      + 'they performed on each question. The sections below highlight where they did well '
+      + 'and which topics would benefit from further practice at home.',
+    wwwHeading: 'What went well',
+    ebiHeading: 'Even better if',
+    focusHeading: 'Focus on',
+    nothingFlagged: 'No individual topics were flagged as particular strengths or weaknesses '
+      + 'this time — performance was fairly even across the paper.',
+    closing: 'If you would like to discuss these results, please contact the school in the usual way.',
+    signOff: 'Best wishes,',
+    signOffName: 'Your child\'s teacher',
+  },
+};
+
+/** Human labels for the wording editor, in the order they appear in the email. */
+export const FIELD_LABELS = {
+  subject: 'Subject line',
+  greeting: 'Greeting',
+  intro: 'Opening paragraph',
+  wwwHeading: '“What went well” heading',
+  ebiHeading: '“Even better if” heading',
+  focusHeading: '“Focus on” heading',
+  nothingFlagged: 'Shown when nothing stands out',
+  closing: 'Closing paragraph',
+  signOff: 'Sign-off',
+  signOffName: 'Signed by',
+};
+
+/** Replace {placeholders} with this pupil's details. Returns raw, unescaped text. */
+function fill(template, data) {
+  const fullName = data.pupilName || 'Student';
+  const values = {
+    firstName: fullName.split(' ')[0] || fullName,
+    fullName,
+    examName: data.examName || 'Assessment',
+    subject: data.subject || '',
+    grade: data.grade ?? '—',
+    totalMarks: data.totalMarks ?? '—',
+    totalPossible: data.totalPossible ?? '—',
+  };
+  return String(template ?? '').replace(
+    /\{(\w+)\}/g,
+    (match, key) => (key in values ? String(values[key]) : match),
+  );
+}
+
+/** Merge the teacher's overrides over the defaults for one audience. */
+function wordingFor(audience, overrides = {}) {
+  return { ...DEFAULT_EMAIL_TEXT[audience], ...(overrides?.[audience] || {}) };
+}
+
 /* ------------------------------------------------------------------ render */
 
 /**
  * @param {object} data   feedback payload (see js/feedback-engine.js)
- * @param {object} options { audience: 'pupil' | 'parent', schoolName?: string }
+ * @param {object} options { audience, schoolName?, text? }  text = wording overrides
  * @returns {{subject: string, html: string, text: string}}
  */
 export function renderFeedbackEmail(data, options = {}) {
@@ -154,34 +232,31 @@ export function renderFeedbackEmail(data, options = {}) {
   const isParent = audience === 'parent';
   const name = data.pupilName || 'Student';
   const examName = data.examName || 'Assessment';
-  const teacher = data.teacherName || 'Your teacher';
   const dateLine = formatDate(data.examDate);
 
-  const subject = isParent
-    ? `${examName} — results for ${name}`
-    : `Your ${examName} results and feedback`;
+  // Wording the admin may have changed, with {placeholders} filled in.
+  const words = wordingFor(audience, options.text);
+  const say = (key) => fill(words[key], data);
+  const teacher = say('signOffName') || 'Your teacher';
 
-  const greeting = isParent
-    ? 'Dear Parent / Guardian,'
-    : `Hi ${esc(name.split(' ')[0] || name)},`;
+  const subject = say('subject');
+  const greeting = esc(say('greeting'));
+  const intro = esc(say('intro')).replace(/\n/g, '<br>');
 
-  const intro = isParent
-    ? `Here are ${esc(name)}'s results for <strong>${esc(examName)}</strong>${data.subject ? ` in ${esc(data.subject)}` : ''}, together with a breakdown of how they performed on each question. The sections below highlight where they did well and which topics would benefit from further practice at home.`
-    : `Here are your results for <strong>${esc(examName)}</strong>${data.subject ? ` in ${esc(data.subject)}` : ''}. Below you can see how you did on each question, what went well, and the topics worth spending a bit more time on.`;
-
-  const provisionalNote = data.isProvisional ? `
+  // Only reachable from Preview: a part-marked paper cannot be sent.
+  const provisionalNote = !data.isComplete ? `
   <tr><td style="padding:0 0 16px 0;">
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
            style="background:${COLOURS.weakBg};border:1px solid #fde68a;border-radius:10px;">
       <tr><td style="padding:12px 16px;font-size:13px;line-height:20px;color:#92400e;">
-        <strong>Please note:</strong> ${esc(data.blankCount)} question${data.blankCount === 1 ? ' has' : 's have'} not been marked yet, so ${isParent ? 'this total and grade are' : 'your total and grade are'} provisional.
+        <strong>Please note:</strong> ${esc(data.blankCount)} question${data.blankCount === 1 ? ' has' : 's have'} not been marked yet, so there is no total or grade for this paper.
       </td></tr>
     </table>
   </td></tr>` : '';
 
-  const wwwTitle = 'What went well';
-  const ebiTitle = 'Even better if';
-  const focusTitle = 'Focus on';
+  const wwwTitle = say('wwwHeading');
+  const ebiTitle = say('ebiHeading');
+  const focusTitle = say('focusHeading');
 
   const wwwRows = bulletList(data.wentWell.map(esc), COLOURS.strong);
   const ebiRows = bulletList(data.evenBetterIf.map(esc), COLOURS.weak);
@@ -219,14 +294,14 @@ export function renderFeedbackEmail(data, options = {}) {
 <title>${esc(subject)}</title>
 </head>
 <body style="margin:0;padding:0;background:#eef2f7;-webkit-font-smoothing:antialiased;">
-<div style="display:none;max-height:0;overflow:hidden;opacity:0;">${esc(examName)}: ${esc(data.totalMarks)}/${esc(data.totalPossible)}, grade ${esc(data.grade ?? '—')}.</div>
+<div style="display:none;max-height:0;overflow:hidden;opacity:0;">${esc(examName)}: ${esc(data.totalMarks ?? '—')}/${esc(data.totalPossible)}, grade ${esc(data.grade ?? '—')}.</div>
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#eef2f7;">
   <tr><td align="center" style="padding:24px 12px;">
     <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0"
            style="width:100%;max-width:600px;background:#ffffff;border-radius:14px;overflow:hidden;box-shadow:0 1px 3px rgba(15,23,42,.08);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
 
       <tr><td style="background:${COLOURS.brandDark};padding:22px 28px;">
-        <p style="margin:0;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#c7d2fe;">${esc(options.schoolName || data.className || 'Assessment feedback')}</p>
+        <p style="margin:0;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#c7d2fe;">${esc(options.schoolName || data.subject || 'Assessment feedback')}</p>
         <h1 style="margin:6px 0 0 0;font-size:21px;line-height:28px;color:#ffffff;font-weight:600;">${esc(examName)}</h1>
         ${dateLine ? `<p style="margin:6px 0 0 0;font-size:13px;color:#a5b4fc;">${esc(dateLine)}</p>` : ''}
       </td></tr>
@@ -246,9 +321,7 @@ export function renderFeedbackEmail(data, options = {}) {
           ${section(focusTitle, COLOURS.brand, '#eef2ff', focusRows)}
           ${nothingFlagged ? `
           <tr><td style="padding:0 0 16px 0;font-size:14px;line-height:22px;color:${COLOURS.muted};">
-            ${isParent
-              ? 'No individual topics were flagged as particular strengths or weaknesses this time — performance was fairly even across the paper.'
-              : 'Nothing stood out as a particular strength or weakness this time — your marks were fairly even across the paper.'}
+            ${esc(say('nothingFlagged'))}
           </td></tr>` : ''}
           ${noteBlock}
         </table>
@@ -256,16 +329,14 @@ export function renderFeedbackEmail(data, options = {}) {
 
       <tr><td style="padding:6px 28px 26px 28px;">
         <p style="margin:0;font-size:15px;line-height:23px;color:${COLOURS.body};">
-          ${isParent
-            ? `If you would like to discuss these results, please contact ${esc(teacher)} through the school in the usual way.`
-            : `If anything here doesn't make sense, ask ${esc(teacher)} in your next lesson — that's exactly what this feedback is for.`}
+          ${esc(say('closing')).replace(/\n/g, '<br>')}
         </p>
-        <p style="margin:16px 0 0 0;font-size:15px;color:${COLOURS.body};">Best wishes,<br><strong style="color:${COLOURS.ink};">${esc(teacher)}</strong></p>
+        <p style="margin:16px 0 0 0;font-size:15px;color:${COLOURS.body};">${esc(say('signOff'))}<br><strong style="color:${COLOURS.ink};">${esc(teacher)}</strong></p>
       </td></tr>
 
       <tr><td style="background:${COLOURS.panel};border-top:1px solid ${COLOURS.line};padding:14px 28px;">
         <p style="margin:0;font-size:11px;line-height:17px;color:${COLOURS.muted};">
-          This is an automated feedback email${data.className ? ` for ${esc(data.className)}` : ''}. Please do not reply to it directly unless your teacher's address is shown as the reply-to.
+          This is an automated feedback email. Please do not reply to it directly unless your teacher's address is shown as the reply-to.
         </p>
       </td></tr>
 
@@ -277,17 +348,15 @@ export function renderFeedbackEmail(data, options = {}) {
 
   /* ---- plain-text alternative ---- */
   const lines = [];
-  lines.push(isParent ? 'Dear Parent / Guardian,' : `Hi ${name.split(' ')[0] || name},`);
+  lines.push(say('greeting'));
   lines.push('');
-  lines.push(isParent
-    ? `Here are ${name}'s results for ${examName}.`
-    : `Here are your results for ${examName}.`);
+  lines.push(say('intro'));
   lines.push('');
-  if (data.isProvisional) {
-    lines.push(`NOTE: ${data.blankCount} question(s) have not been marked yet, so this total and grade are provisional.`);
+  if (!data.isComplete) {
+    lines.push(`NOTE: ${data.blankCount} question(s) have not been marked yet, so there is no total or grade.`);
     lines.push('');
   }
-  lines.push(`Total: ${data.totalMarks} out of ${data.totalPossible}  (${data.percentage}%)`);
+  lines.push(`Total: ${data.totalMarks ?? '-'} out of ${data.totalPossible}`);
   lines.push(`Grade: ${data.grade ?? '-'}`);
   lines.push('');
   lines.push('QUESTION BY QUESTION');
@@ -305,7 +374,7 @@ export function renderFeedbackEmail(data, options = {}) {
     lines.push('', focusTitle.toUpperCase(), ...data.focusOn.map((f) => `  - ${f.topic ? `${f.topic}: ` : ''}${f.url}`));
   }
   if (data.teacherNote) lines.push('', `A note from ${teacher}:`, data.teacherNote);
-  lines.push('', 'Best wishes,', teacher);
+  lines.push('', say('signOff'), teacher);
 
   return { subject, html, text: lines.join('\n') };
 }

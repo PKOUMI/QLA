@@ -28,15 +28,18 @@ qla/
 │   ├── app.js                  shell: routing, saving, dialogs
 │   ├── model.js                the shape of an assessment
 │   ├── storage.js              localStorage today, a database later
-│   ├── grades.js               totals, percentages, grade boundaries
+│   ├── grades.js               totals, grade boundaries, averages
 │   ├── validation.js           input checking and HTML escaping
 │   ├── csv.js                  CSV import/export
 │   ├── feedback-engine.js      what went well / even better if / focus on
 │   ├── api.js                  talks to the backend
 │   ├── ui.js                   small DOM helpers
+│   ├── charts.js               SVG charts for the Analyse page
+│   ├── lock.js                 the Setup PIN lock
 │   └── views/
 │       ├── setup.js
 │       ├── marksheet.js
+│       ├── analyse.js
 │       └── feedback.js
 ├── shared/
 │   └── email-template.js       used by BOTH the browser preview and the server

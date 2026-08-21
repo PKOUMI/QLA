@@ -7,7 +7,7 @@
  */
 
 import { setMark, getMark } from '../model.js';
-import { totalPossible, allResults, questionAverages, classSummary, round, formatPercent } from '../grades.js';
+import { totalPossible, allResults, questionAverages, classSummary, round, formatMark } from '../grades.js';
 import { validateAssessment, validateMark } from '../validation.js';
 import { marksheetCsv } from '../csv.js';
 import { $, el, clear, toast, confirmDialog, downloadFile, plural, callout } from '../ui.js';
@@ -34,7 +34,7 @@ export function init() {
     if (wantsZero) {
       const ok = await confirmDialog({
         title: 'Treat blanks as zero?',
-        message: 'Every blank cell will count as a score of 0 for totals, percentages, grades, averages and feedback. Only do this once you have finished marking — otherwise pupils will be told they scored 0 on questions you simply have not marked yet.',
+        message: 'Every blank cell will count as a score of 0 for totals, grades, averages and feedback. Only do this once you have finished marking — otherwise pupils will be told they scored 0 on questions you simply have not marked yet.',
         confirmLabel: 'Yes, blanks are zeros',
       });
       if (!ok) { event.target.checked = false; return; }
@@ -88,9 +88,10 @@ function renderStats(assessment, results) {
     stat(String(assessment.pupils.length), 'Pupils'),
     stat(String(assessment.questions.length), 'Questions'),
     stat(String(total), 'Marks available'),
+    // The only percentage in the app: progress through marking, not attainment.
     stat(cellCount ? `${Math.round((entered / cellCount) * 100)}%` : '0%', 'Marks entered'),
-    stat(summary.averageMark === null ? '—' : String(round(summary.averageMark, 1)), 'Class average'),
-    stat(summary.averagePercentage === null ? '—' : formatPercent(summary.averagePercentage), 'Average %'),
+    stat(summary.averageMark === null ? '—' : formatMark(summary.averageMark), 'Class average marks'),
+    stat(summary.averageGrade || '—', 'Class average grade'),
   );
 }
 
@@ -113,8 +114,7 @@ function renderHead(assessment) {
   }
 
   row.append(
-    el('th', { scope: 'col', style: 'text-align:right;min-width:78px' }, el('div', { class: 'qhead', text: 'Total' })),
-    el('th', { scope: 'col', style: 'text-align:right;min-width:64px' }, el('div', { class: 'qhead', text: '%' })),
+    el('th', { scope: 'col', style: 'text-align:right;min-width:88px' }, el('div', { class: 'qhead', text: 'Total' })),
     el('th', { scope: 'col', style: 'text-align:center;min-width:70px' }, el('div', { class: 'qhead', text: 'Grade' })),
   );
   head.append(row);
@@ -155,10 +155,7 @@ function renderBody(assessment, results) {
     });
 
     row.append(
-      el('td', { class: 'total-col', dataset: { total: pupil.id } },
-        result.hasAnyMark ? `${round(result.achieved, 1)} / ${result.possible}` : '—'),
-      el('td', { class: 'pct-col', dataset: { pct: pupil.id } },
-        result.hasAnyMark ? formatPercent(result.percentage) : '—'),
+      el('td', { class: 'total-col', dataset: { total: pupil.id } }, totalCellContent(result)),
       el('td', { class: 'grade-col', dataset: { grade: pupil.id } }, gradePill(result)),
     );
 
@@ -166,20 +163,35 @@ function renderBody(assessment, results) {
   });
 }
 
+/**
+ * A paper is only totalled once every question has a mark. Showing a running
+ * total against a full-paper grade boundary would read as a fail, so an
+ * unfinished paper gets a dash and a tooltip saying what is outstanding.
+ */
+function totalCellContent(result) {
+  if (result.total === null) {
+    return el('span', {
+      class: 'awaiting',
+      text: '—',
+      title: `${plural(result.blankCount, 'question')} still to mark`,
+    });
+  }
+  return `${formatMark(result.total)} / ${result.possible}`;
+}
+
 function gradePill(result) {
-  if (!result.hasAnyMark && result.blankCount > 0 && !result.isComplete) {
-    return el('span', { class: 'grade-pill is-none', text: '—', title: 'No marks entered' });
+  if (result.grade === null) {
+    return el('span', {
+      class: 'grade-pill is-none',
+      text: '—',
+      title: result.hasAnyMark
+        ? `Not graded yet — ${plural(result.blankCount, 'question')} still to mark`
+        : 'No marks entered yet',
+    });
   }
   const classes = ['grade-pill'];
   if (result.grade === 'U') classes.push('is-u');
-  if (result.isProvisional) classes.push('is-provisional');
-  return el('span', {
-    class: classes.join(' '),
-    text: result.grade ?? '—',
-    title: result.isProvisional
-      ? `Provisional — ${plural(result.blankCount, 'question')} not marked yet`
-      : `Grade ${result.grade}`,
-  });
+  return el('span', { class: classes.join(' '), text: result.grade, title: `Grade ${result.grade}` });
 }
 
 function applyCellState(cell, mark, maxMarks) {
@@ -255,12 +267,12 @@ function refreshRowTotals(pupilId) {
   if (!result) return;
 
   const totalCell = document.querySelector(`[data-total="${pupilId}"]`);
-  const pctCell = document.querySelector(`[data-pct="${pupilId}"]`);
   const gradeCell = document.querySelector(`[data-grade="${pupilId}"]`);
   if (!totalCell) return;
 
-  totalCell.textContent = result.hasAnyMark ? `${round(result.achieved, 1)} / ${result.possible}` : '—';
-  pctCell.textContent = result.hasAnyMark ? formatPercent(result.percentage) : '—';
+  const totalContent = totalCellContent(result);
+  clear(totalCell).append(typeof totalContent === 'string'
+    ? document.createTextNode(totalContent) : totalContent);
   clear(gradeCell).append(gradePill(result));
 
   renderStats(assessment, results);
@@ -283,23 +295,24 @@ function renderFoot(assessment) {
 
   const row = el('tr', { class: 'avg-row' },
     el('td', { class: 'pupil-col' }, el('div', { class: 'pupil-cell' },
-      el('div', { class: 'nm', text: 'Class average' }),
-      el('div', { class: 'em', text: `${plural(summary.count, 'pupil')} with marks` }))),
+      el('div', { class: 'nm', text: 'Class average marks' }),
+      el('div', { class: 'em', text: `${plural(summary.count, 'fully marked paper')}` }))),
   );
 
   averages.forEach((average) => {
     row.append(el('td', { class: 'avg-cell' },
-      el('div', { class: 'avg-mark', text: average.average === null ? '—' : String(round(average.average, 1)) }),
-      el('div', { class: 'avg-pct', text: average.percentage === null ? '' : formatPercent(average.percentage) }),
+      el('div', { class: 'avg-mark', text: average.average === null ? '—' : formatMark(average.average) }),
+      el('div', { class: 'avg-outof', text: average.maxMarks ? `/ ${average.maxMarks}` : '' }),
     ));
   });
 
   row.append(
     el('td', { class: 'total-col', style: 'background:transparent' },
-      summary.averageMark === null ? '—' : `${round(summary.averageMark, 1)} / ${totalPossible(assessment)}`),
-    el('td', { class: 'pct-col', style: 'background:transparent' },
-      summary.averagePercentage === null ? '—' : formatPercent(summary.averagePercentage)),
-    el('td', { class: 'grade-col', style: 'background:transparent' }, ''),
+      summary.averageMark === null ? '—' : `${formatMark(summary.averageMark)} / ${totalPossible(assessment)}`),
+    el('td', { class: 'grade-col', style: 'background:transparent' },
+      summary.averageGrade
+        ? el('span', { class: `grade-pill${summary.averageGrade === 'U' ? ' is-u' : ''}`, text: summary.averageGrade })
+        : ''),
   );
 
   foot.append(row);
@@ -334,6 +347,6 @@ function renderBlankSummary(assessment, results = allResults(assessment)) {
     [
       ...names,
       incomplete.length > 8 ? `…and ${incomplete.length - 8} more.` : null,
-      'Their grades are shown as provisional and they are not selected for feedback by default.',
+      'They cannot be selected for feedback.',
     ].filter(Boolean)));
 }

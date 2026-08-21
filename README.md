@@ -18,8 +18,14 @@ validation.
 
 **Marksheet** — a spreadsheet-style grid with questions across the top and
 pupils down the side. Sticky headers, arrow-key navigation, per-cell validation,
-live totals, percentages and grades, and a class-average row. Blank means *not
-marked*, never *zero*.
+live totals and grades, and a class-average row. Blank means *not marked*, never
+*zero*, and a pupil's total and grade stay as a dash until every question on
+their paper has been marked.
+
+**Analyse** — the class picture: every question with its average, lowest and
+highest mark, plus grade distribution, topic/AO performance, question averages
+and a mark distribution with your boundaries drawn on. Each chart can be hidden
+or shown as a table.
 
 **Feedback** — pick who receives feedback, preview the exact email, then send.
 Each email contains the results summary, a question-by-question table, and three
@@ -83,11 +89,13 @@ Two rules the code sticks to:
 |---|---|
 | `js/model.js` | The shape of an assessment; pure helpers |
 | `js/storage.js` | Persistence behind a swappable repository interface |
-| `js/grades.js` | Totals, percentages, grade boundaries, averages |
+| `js/grades.js` | Totals, grade boundaries, averages, distributions |
 | `js/validation.js` | Input checking, HTML escaping, CSV-injection defence |
 | `js/csv.js` | CSV parsing, template, import validation, export |
 | `js/feedback-engine.js` | What went well / Even better if / Focus on |
 | `js/api.js` | Batching, retries, duplicate-send protection |
+| `js/charts.js` | Dependency-free SVG charts for the Analyse page |
+| `js/lock.js` | The Setup PIN lock (deters accidents, is not security) |
 | `js/views/*.js` | One file per screen |
 | `shared/email-template.js` | The email — imported by browser **and** server |
 | `api/send-feedback.js` | The only thing that can send email |

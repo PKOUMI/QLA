@@ -46,7 +46,7 @@ export const localRepo = {
       .map((d) => ({
         id: d.id,
         name: d.exam?.name || 'Untitled assessment',
-        className: d.exam?.className || '',
+        subject: d.exam?.subject || '',
         updatedAt: d.updatedAt,
         pupilCount: (d.pupils || []).length,
       }))

@@ -100,7 +100,7 @@ async function sendBatchWithRetry(batch, { maxAttempts = 3 } = {}) {
  * Send all messages, in batches, reporting progress as it goes.
  *
  * @param {Array} messages   [{ id, type: 'pupil'|'parent', to, data }]
- * @param {object} context   { assessmentId, batchId, replyTo, replyToName, schoolName }
+ * @param {object} context   { assessmentId, batchId, replyTo, schoolName, text }
  * @param {Function} onProgress ({ done, total, phase })
  * @returns {{results: Array, sent: number, failed: number}}
  */
@@ -119,7 +119,7 @@ export async function sendFeedbackEmails(messages, context, onProgress = () => {
         idempotencyKey: `${context.batchId}:${start}`,
         assessmentId: context.assessmentId,
         replyTo: context.replyTo || '',
-        replyToName: context.replyToName || '',
+        text: context.text || undefined,
         schoolName: context.schoolName || '',
         messages: slice.map((message) => ({
           id: message.id,

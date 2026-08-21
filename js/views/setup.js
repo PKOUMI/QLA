@@ -6,10 +6,11 @@
  */
 
 import { newQuestion, newPupil, resizeQuestions, applyPaperType, pruneMarks, GRADE_SETS } from '../model.js';
+import { canEdit, isLocked, isLockEnabled, buildLock, pinMatches, validatePin, setSessionUnlocked } from '../lock.js';
 import { totalPossible } from '../grades.js';
 import { validateAssessment, isValidUrl, isValidEmail } from '../validation.js';
 import { parsePupilCsv, pupilTemplateCsv } from '../csv.js';
-import { $, el, clear, toast, openModal, confirmDialog, renderMessages, downloadFile, readFileAsText, plural } from '../ui.js';
+import { $, el, clear, toast, openModal, closeModal, confirmDialog, renderMessages, downloadFile, readFileAsText, plural } from '../ui.js';
 import { state, update } from '../app.js';
 
 /* --- Wiring (runs once) -------------------------------------------------- */
@@ -18,8 +19,6 @@ export function init() {
   // Exam detail text fields: keep a light touch so typing is never interrupted.
   bindText('#exam-name', (a, v) => { a.exam.name = v; });
   bindText('#exam-subject', (a, v) => { a.exam.subject = v; });
-  bindText('#exam-class', (a, v) => { a.exam.className = v; });
-  bindText('#exam-teacher', (a, v) => { a.exam.teacherName = v; });
   bindText('#exam-teacher-email', (a, v) => { a.exam.teacherEmail = v; });
   bindText('#exam-date', (a, v) => { a.exam.date = v; });
 
@@ -63,6 +62,33 @@ export function init() {
 
   $('#btn-import-csv').addEventListener('click', () => $('#csv-file').click());
   $('#csv-file').addEventListener('change', handleCsvFile);
+
+  $('#btn-clear-pupils').addEventListener('click', async () => {
+    const count = state.assessment.pupils.length;
+    if (count === 0) { toast('There are no pupils to clear.', 'info'); return; }
+    const ok = await confirmDialog({
+      title: `Remove all ${plural(count, 'pupil')}?`,
+      message: 'The whole class list will be removed, along with every mark entered for them. '
+        + 'The questions and grade boundaries are kept. This cannot be undone.',
+      confirmLabel: 'Remove all pupils', danger: true,
+    });
+    if (ok) {
+      update((a) => { a.pupils = []; pruneMarks(a); });
+      toast(`${plural(count, 'pupil')} removed.`, 'ok');
+    }
+  });
+
+  $('#btn-lock').addEventListener('click', openLockDialog);
+  $('#btn-unlock').addEventListener('click', openUnlockDialog);
+
+  // Section-level error lists are refreshed when focus leaves the section, so a
+  // half-typed URL is not flagged while the teacher is still typing it.
+  for (const selector of ['#questions-body', '#pupils-body', '#boundaries-grid']) {
+    $(selector).addEventListener('focusout', () => {
+      // Wait a tick: focus may be moving to another field in the same section.
+      setTimeout(() => refresh(state.assessment), 0);
+    });
+  }
 }
 
 function bindText(selector, apply) {
@@ -94,8 +120,6 @@ function focusLast(bodySelector, childSelector) {
 export function render(assessment) {
   setValue('#exam-name', assessment.exam.name);
   setValue('#exam-subject', assessment.exam.subject);
-  setValue('#exam-class', assessment.exam.className);
-  setValue('#exam-teacher', assessment.exam.teacherName);
   setValue('#exam-teacher-email', assessment.exam.teacherEmail);
   setValue('#exam-date', assessment.exam.date);
   setValue('#paper-type', assessment.exam.paperType);
@@ -104,6 +128,8 @@ export function render(assessment) {
   renderQuestions(assessment);
   renderBoundaries(assessment);
   renderPupils(assessment);
+  renderLockBar(assessment);
+  applyLockState(assessment);
   refresh(assessment);
 }
 
@@ -113,12 +139,21 @@ export function render(assessment) {
  */
 export function refresh(assessment) {
   const { bySection, warnings } = validateAssessment(assessment);
-  renderMessages($('#questions-errors'), { errors: bySection.questions });
-  renderMessages($('#boundaries-errors'), { errors: bySection.boundaries });
-  renderMessages($('#pupils-errors'), {
-    errors: bySection.pupils,
-    warnings: warnings.filter((w) => w.includes('no email address')),
-  });
+
+  // Do not tell someone their entry is wrong while they are still making it.
+  // A half-typed "https:/" is not an error yet; it becomes one when they leave.
+  if (!isEditingWithin('#questions-body')) {
+    renderMessages($('#questions-errors'), { errors: bySection.questions });
+  }
+  if (!isEditingWithin('#boundaries-grid')) {
+    renderMessages($('#boundaries-errors'), { errors: bySection.boundaries });
+  }
+  if (!isEditingWithin('#pupils-body')) {
+    renderMessages($('#pupils-errors'), {
+      errors: bySection.pupils,
+      warnings: warnings.filter((w) => w.includes('no email address')),
+    });
+  }
 
   updateQuestionTotal();
   updateBoundaryHints(assessment);
@@ -137,6 +172,20 @@ function setValue(selector, value) {
   if (node && document.activeElement !== node) node.value = value ?? '';
 }
 
+/** True while the cursor is inside the given section. */
+function isEditingWithin(selector) {
+  const section = $(selector);
+  return Boolean(section && document.activeElement && section.contains(document.activeElement));
+}
+
+/**
+ * Mark a field valid or invalid. Only ever called on blur, never on keystroke,
+ * so a field is not flagged red while it is still being filled in.
+ */
+function markValidity(input, isValid) {
+  input.setAttribute('aria-invalid', isValid ? 'false' : 'true');
+}
+
 /* --- Questions table ----------------------------------------------------- */
 
 function renderQuestions(assessment) {
@@ -152,11 +201,14 @@ function renderQuestions(assessment) {
       el('td', {}, el('input', {
         type: 'number', min: '1', step: '0.5', value: question.maxMarks, class: 'num',
         'aria-label': `Maximum marks, question ${question.number || index + 1}`,
-        'aria-invalid': !Number.isFinite(question.maxMarks) || question.maxMarks <= 0 ? 'true' : null,
         oninput: (e) => {
           const value = e.target.value === '' ? NaN : Number(e.target.value);
-          e.target.setAttribute('aria-invalid', !Number.isFinite(value) || value <= 0 ? 'true' : 'false');
+          e.target.setAttribute('aria-invalid', 'false');   // cleared while typing
           update((a) => { a.questions[index].maxMarks = value; }, { rerender: false });
+        },
+        onblur: (e) => {
+          const value = e.target.value === '' ? NaN : Number(e.target.value);
+          markValidity(e.target, Number.isFinite(value) && value > 0);
         },
       })),
       el('td', {}, el('input', {
@@ -167,11 +219,15 @@ function renderQuestions(assessment) {
       el('td', {}, el('input', {
         type: 'url', value: question.reteachUrl, placeholder: 'https://…',
         'aria-label': `Reteach link, question ${question.number || index + 1}`,
-        'aria-invalid': question.reteachUrl.trim() && !isValidUrl(question.reteachUrl) ? 'true' : null,
+        // A URL is unavoidably invalid until it is finished, so it is only
+        // checked once the teacher clicks or tabs away from the field.
         oninput: (e) => {
-          const value = e.target.value.trim();
-          e.target.setAttribute('aria-invalid', value && !isValidUrl(value) ? 'true' : 'false');
+          e.target.setAttribute('aria-invalid', 'false');
           update((a) => { a.questions[index].reteachUrl = e.target.value; }, { rerender: false });
+        },
+        onblur: (e) => {
+          const value = e.target.value.trim();
+          markValidity(e.target, !value || isValidUrl(value));
         },
       })),
       el('td', {}, el('button', {
@@ -201,12 +257,23 @@ function renderBoundaries(assessment) {
   const grid = clear($('#boundaries-grid'));
   const total = totalPossible(assessment);
 
-  assessment.gradeBoundaries.forEach((boundary, index) => {
+  // Highest grade first, the way exam boards publish boundaries. The underlying
+  // array stays lowest-first, so only the display order is reversed.
+  const ordered = assessment.gradeBoundaries
+    .map((boundary, index) => ({ boundary, index }))
+    .reverse();
+
+  grid.append(el('div', { class: 'boundary-row boundary-head' },
+    el('span', { text: 'Grade' }),
+    el('span', { text: 'Minimum mark' }),
+    el('span', { class: 'boundary-band-head', text: 'Mark range' })));
+
+  ordered.forEach(({ boundary, index }) => {
     const isU = index === 0;
-    grid.append(el('div', { class: 'field' },
-      el('label', { for: `boundary-${boundary.grade}` },
-        `Grade ${boundary.grade}`,
-        isU ? el('span', { class: 'hint', style: 'font-weight:400', text: ' (always 0)' }) : null),
+    grid.append(el('div', { class: 'boundary-row' },
+      el('label', { class: 'boundary-grade', for: `boundary-${boundary.grade}` },
+        boundary.grade,
+        isU ? el('span', { class: 'hint', text: ' always 0' }) : null),
       el('input', {
         type: 'number', id: `boundary-${boundary.grade}`, min: '0', max: String(total || 1000), step: '1',
         class: 'num', value: boundary.minMark === null ? '' : boundary.minMark,
@@ -215,7 +282,7 @@ function renderBoundaries(assessment) {
           a.gradeBoundaries[index].minMark = e.target.value === '' ? null : Number(e.target.value);
         }, { rerender: false }),
       }),
-      el('span', { class: 'hint', id: `boundary-hint-${boundary.grade}` }),
+      el('span', { class: 'hint boundary-band', id: `boundary-hint-${boundary.grade}` }),
     ));
   });
 
@@ -225,17 +292,38 @@ function renderBoundaries(assessment) {
   updateBoundaryHints(assessment);
 }
 
-/** Show each boundary as a percentage of the paper, without rebuilding inputs. */
+/**
+ * Show the band of marks each grade covers, e.g. "45 to 54 marks". Far more
+ * useful to a teacher than a percentage, and it makes a gap or an overlap in
+ * the boundaries obvious at a glance.
+ */
 function updateBoundaryHints(assessment) {
   const total = totalPossible(assessment);
-  for (const boundary of assessment.gradeBoundaries) {
+  const boundaries = assessment.gradeBoundaries;
+
+  boundaries.forEach((boundary, index) => {
     const hint = $(`#boundary-hint-${boundary.grade}`);
-    if (!hint) continue;
-    const value = Number(boundary.minMark);
-    hint.textContent = total > 0 && boundary.minMark !== null && boundary.minMark !== '' && Number.isFinite(value)
-      ? `${Math.round((value / total) * 100)}% of ${total}`
-      : '';
-  }
+    if (!hint) return;
+
+    const from = Number(boundary.minMark);
+    if (boundary.minMark === null || boundary.minMark === '' || !Number.isFinite(from)) {
+      hint.textContent = '';
+      return;
+    }
+
+    // The band runs up to one below the next grade's boundary.
+    const next = boundaries[index + 1];
+    const nextMark = next && next.minMark !== null && next.minMark !== '' && Number.isFinite(Number(next.minMark))
+      ? Number(next.minMark) : null;
+
+    if (nextMark === null) {
+      hint.textContent = total > 0 ? `${from} to ${total} marks` : `${from} marks and above`;
+    } else if (nextMark - 1 < from) {
+      hint.textContent = 'overlaps the grade above';
+    } else {
+      hint.textContent = `${from} to ${nextMark - 1} marks`;
+    }
+  });
 }
 
 /* --- Pupils -------------------------------------------------------------- */
@@ -257,16 +345,18 @@ function renderPupils(assessment) {
       el('td', {}, el('input', {
         type: 'email', value: pupil.email, placeholder: 'pupil@school.sch.uk', 'aria-label': `Pupil email, row ${index + 1}`,
         oninput: (e) => {
-          e.target.setAttribute('aria-invalid', e.target.value.trim() && !isValidEmail(e.target.value) ? 'true' : 'false');
+          e.target.setAttribute('aria-invalid', 'false');
           update((a) => { a.pupils[index].email = e.target.value; }, { rerender: false });
         },
+        onblur: (e) => markValidity(e.target, !e.target.value.trim() || isValidEmail(e.target.value)),
       })),
       el('td', {}, el('input', {
         type: 'email', value: pupil.parentEmail, placeholder: 'optional', 'aria-label': `Parent email, row ${index + 1}`,
         oninput: (e) => {
-          e.target.setAttribute('aria-invalid', e.target.value.trim() && !isValidEmail(e.target.value) ? 'true' : 'false');
+          e.target.setAttribute('aria-invalid', 'false');
           update((a) => { a.pupils[index].parentEmail = e.target.value; }, { rerender: false });
         },
+        onblur: (e) => markValidity(e.target, !e.target.value.trim() || isValidEmail(e.target.value)),
       })),
       el('td', {}, el('button', {
         class: 'btn btn-icon', type: 'button', title: 'Remove this pupil',
@@ -360,3 +450,159 @@ async function handleCsvFile(event) {
     ],
   });
 }
+
+/* --- Setup lock ---------------------------------------------------------- */
+
+/**
+ * The lock exists to stop a colleague changing the paper while marks are being
+ * entered — editing a question's maximum marks halfway through silently
+ * invalidates every total. It deters accidents; it is not security. See
+ * js/lock.js for the honest limits.
+ */
+
+/** Everything on Setup that must be frozen when the lock is on. */
+const LOCKABLE = '#view-setup input, #view-setup select, #view-setup textarea, '
+  + '#view-setup .btn:not(#btn-unlock):not(#btn-lock)';
+
+function applyLockState(assessment) {
+  const locked = isLocked(assessment);
+  $('#view-setup').classList.toggle('is-locked', locked);
+
+  for (const node of document.querySelectorAll(LOCKABLE)) {
+    node.disabled = locked;
+  }
+  if (!locked) {
+    // U is always fixed at 0, lock or no lock.
+    const uInput = $(`#boundary-${state.assessment.gradeBoundaries[0]?.grade}`);
+    if (uInput) uInput.disabled = true;
+  }
+}
+
+function renderLockBar(assessment) {
+  const enabled = isLockEnabled(assessment);
+  const locked = isLocked(assessment);
+  const bar = $('#lockbar');
+
+  bar.classList.toggle('is-locked', locked);
+  bar.classList.toggle('is-armed', enabled && !locked);
+  $('#lockbar-ico').textContent = locked ? '🔒' : '🔓';
+
+  if (locked) {
+    $('#lockbar-title').textContent = 'Set up is locked';
+    $('#lockbar-note').textContent = 'Marks can still be entered on the marksheet. '
+      + 'The PIN is needed to change questions, boundaries or the pupil list.';
+  } else if (enabled) {
+    $('#lockbar-title').textContent = 'Set up is unlocked for this session';
+    $('#lockbar-note').textContent = 'You entered the PIN. Close the browser tab to lock it again.';
+  } else {
+    $('#lockbar-title').textContent = 'Set up is unlocked';
+    $('#lockbar-note').textContent = 'Anyone using this browser can change the questions, boundaries and pupil list.';
+  }
+
+  $('#btn-unlock').hidden = !locked;
+  $('#btn-lock').hidden = locked;
+  $('#btn-lock').textContent = enabled ? 'Change or remove PIN' : 'Lock set up';
+}
+
+function openLockDialog() {
+  const assessment = state.assessment;
+  const alreadySet = isLockEnabled(assessment);
+  const pinInput = el('input', {
+    type: 'password', id: 'lock-pin', inputmode: 'numeric', autocomplete: 'off',
+    maxlength: '8', placeholder: '4 to 8 digits',
+  });
+  const error = el('div', { class: 'field-error', role: 'alert' });
+
+  const body = el('div', { class: 'grid', style: 'gap:14px' },
+    el('div', { class: 'callout callout-info' },
+      el('span', { class: 'ico', 'aria-hidden': 'true', text: 'ℹ️' }),
+      el('div', {},
+        el('strong', { text: 'What this does' }),
+        el('span', {
+          text: 'Locking freezes the questions, grade boundaries and pupil list so nobody '
+            + 'changes the paper while marks are being entered. Entering marks is unaffected. '
+            + 'It guards against mistakes, not against someone determined — the check happens '
+            + 'in the browser. Real staff permissions arrive with school accounts.',
+        }))),
+    el('div', { class: 'field' },
+      el('label', { for: 'lock-pin', text: alreadySet ? 'New PIN' : 'Choose a PIN' }),
+      pinInput,
+      el('span', { class: 'hint', text: 'Anyone who needs to change the set up will be asked for this. Write it down somewhere — it cannot be recovered.' })),
+    error,
+  );
+
+  openModal({
+    title: alreadySet ? 'Change the set up PIN' : 'Lock the set up page',
+    body,
+    buttons: [
+      { label: 'Cancel' },
+      ...(alreadySet ? [{
+        label: 'Remove lock',
+        onClick: () => {
+          // Session state first: update() re-renders, and the render must
+          // already see the new lock state or the screen lags a step behind.
+          setSessionUnlocked(true);
+          update((a) => { a.settings.lock = { enabled: false, pinHash: null, salt: null }; });
+          toast('Lock removed. Anyone can now edit the set up.', 'ok');
+        },
+      }] : []),
+      {
+        label: alreadySet ? 'Save new PIN' : 'Lock set up',
+        class: 'btn-primary',
+        close: false,
+        onClick: async () => {
+          const problem = validatePin(pinInput.value);
+          if (problem) { error.textContent = problem; pinInput.focus(); return; }
+          const lock = await buildLock(pinInput.value);
+          // Session state first, so the re-render inside update() already
+          // knows the page is locked.
+          setSessionUnlocked(false);
+          update((a) => { a.settings.lock = lock; });
+          closeModal();
+          toast('Set up locked. The questions, boundaries and pupil list are now read-only.', 'ok', 6000);
+        },
+      },
+    ],
+  });
+  setTimeout(() => pinInput.focus(), 60);
+}
+
+function openUnlockDialog() {
+  const pinInput = el('input', {
+    type: 'password', id: 'unlock-pin', inputmode: 'numeric', autocomplete: 'off',
+    maxlength: '8', placeholder: 'PIN',
+  });
+  const error = el('div', { class: 'field-error', role: 'alert' });
+
+  const attempt = async () => {
+    if (await pinMatches(state.assessment, pinInput.value)) {
+      setSessionUnlocked(true);
+      closeModal();
+      render(state.assessment);
+      toast('Set up unlocked for this session.', 'ok');
+    } else {
+      error.textContent = 'That PIN is not right.';
+      pinInput.select();
+    }
+  };
+
+  pinInput.addEventListener('keydown', (event) => {
+    if (event.key === 'Enter') { event.preventDefault(); attempt(); }
+  });
+
+  openModal({
+    title: 'Unlock the set up page',
+    body: el('div', { class: 'grid', style: 'gap:14px' },
+      el('p', { text: 'Enter the PIN chosen when this assessment was locked.' }),
+      el('div', { class: 'field' }, el('label', { for: 'unlock-pin', text: 'PIN' }), pinInput),
+      error),
+    buttons: [
+      { label: 'Cancel' },
+      { label: 'Unlock', class: 'btn-primary', close: false, onClick: attempt },
+    ],
+  });
+  setTimeout(() => pinInput.focus(), 60);
+}
+
+/** Used by the feedback page to decide whether the wording editor is available. */
+export { canEdit };

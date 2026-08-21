@@ -27,6 +27,9 @@
 
 /* --- Base --------------------------------------------------------------- */
 *,*::before,*::after{box-sizing:border-box}
+/* The `hidden` attribute must win over any component display rule. Without
+   this, `.btn{display:inline-flex}` keeps a hidden button on screen. */
+[hidden]{display:none !important}
 html{-webkit-text-size-adjust:100%}
 body{
   margin:0;font-family:var(--font);font-size:15px;line-height:1.5;
@@ -359,4 +362,178 @@ tr.avg-row .avg-pct{font-size:10.5px;opacity:.75;font-variant-numeric:tabular-nu
   .app-header,.view-nav,.card-foot,.toasts,.legend{display:none!important}
   body{background:#fff}
   .card{box-shadow:none;break-inside:avoid}
+}
+
+/* ==========================================================================
+   Additions: setup lock, vertical boundaries, Analyse page and charts
+   ========================================================================== */
+
+/* --- Setup lock bar ----------------------------------------------------- */
+.lockbar{
+  display:flex;align-items:center;gap:14px;margin:0 0 18px;padding:12px 16px;
+  background:var(--surface);border:1px solid var(--line);border-left:3px solid var(--line-strong);
+  border-radius:var(--radius);box-shadow:var(--shadow-sm);
+}
+.lockbar.is-locked{border-left-color:var(--warn);background:var(--warn-bg);border-color:var(--warn-line)}
+.lockbar.is-armed{border-left-color:var(--ok)}
+.lockbar-ico{font-size:20px;line-height:1;flex:none}
+.lockbar-text{display:flex;flex-direction:column;gap:2px;min-width:0}
+.lockbar-text strong{color:var(--ink);font-size:14px}
+.lockbar .hint{font-size:12.5px;color:var(--muted)}
+
+/* A locked Setup still reads clearly — it is dimmed, not hidden. */
+.view.is-locked .card{opacity:.72}
+.view.is-locked input:disabled,
+.view.is-locked select:disabled{background:var(--panel);cursor:not-allowed}
+
+.field-error{color:var(--bad);font-size:13px;min-height:1em}
+
+/* --- Grade boundaries: always a vertical list --------------------------- */
+/* Exam boundaries are read as a single column, whatever the screen width. */
+.boundary-list{display:flex;flex-direction:column;gap:0;max-width:520px}
+.boundary-row{
+  display:grid;grid-template-columns:88px 130px 1fr;align-items:center;gap:14px;
+  padding:7px 0;border-bottom:1px solid var(--line);
+}
+.boundary-row:last-child{border-bottom:0}
+.boundary-head{
+  border-bottom:1px solid var(--line-strong);padding-bottom:8px;
+  font-size:11.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);
+}
+.boundary-grade{
+  display:flex;align-items:baseline;gap:6px;margin:0;
+  font-weight:700;font-size:16px;color:var(--ink);
+}
+.boundary-grade .hint{font-size:11.5px;font-weight:500}
+.boundary-row input{width:100%}
+.boundary-band{font-size:12.5px;color:var(--muted);font-variant-numeric:tabular-nums}
+
+/* --- Inline explanatory notes ------------------------------------------- */
+.note-inline{
+  flex-basis:100%;margin:8px 0 0;font-size:12.5px;line-height:1.45;color:var(--muted);
+}
+.note{padding:12px 14px;border-radius:var(--radius);font-size:13.5px;line-height:1.5;margin:0 0 16px}
+.note-warn{background:var(--warn-bg);border:1px solid var(--warn-line);color:#7c2d12}
+
+/* --- Marksheet tweaks --------------------------------------------------- */
+.avg-outof{font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums}
+.awaiting{color:var(--faint);cursor:help}
+
+/* --- Feedback: parent column ------------------------------------------- */
+.send-table th.chk{white-space:nowrap}
+.chk-caption{
+  display:block;font-size:10.5px;font-weight:600;letter-spacing:.04em;
+  text-transform:uppercase;color:var(--muted);padding-top:3px;
+}
+.wording-fields{display:grid;gap:12px}
+.wording-fields textarea{min-height:74px;resize:vertical}
+.tabs{display:flex;gap:6px}
+
+/* --- Analyse page ------------------------------------------------------- */
+.stat-row{
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin:0 0 18px;
+}
+.stat-row .stat{
+  background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);
+  padding:14px 16px;box-shadow:var(--shadow-sm);
+}
+.stat-value{font-size:26px;font-weight:700;color:var(--ink);line-height:1.15}
+.stat-label{font-size:11.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);padding-top:5px}
+
+.customise{
+  background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);
+  margin:0 0 18px;box-shadow:var(--shadow-sm);
+}
+.customise>summary{padding:12px 16px;cursor:pointer;font-weight:600;color:var(--ink);font-size:14px}
+.customise>summary:hover{background:var(--panel)}
+.customise-body{padding:4px 16px 16px;border-top:1px solid var(--line);display:grid;gap:16px}
+.customise .field-group{border:0;padding:0;margin:0}
+.customise legend{
+  padding:0 0 8px;font-size:11.5px;font-weight:700;letter-spacing:.06em;
+  text-transform:uppercase;color:var(--muted);
+}
+.check-row{display:flex;flex-wrap:wrap;gap:8px 20px}
+.check{display:flex;align-items:center;gap:8px;font-size:14px;cursor:pointer}
+.customise-selects{display:flex;flex-wrap:wrap;gap:16px}
+.field-sm{max-width:220px}
+.field-sm .label{
+  display:block;font-size:11.5px;font-weight:700;letter-spacing:.06em;
+  text-transform:uppercase;color:var(--muted);padding-bottom:5px;
+}
+.input-sm{padding:6px 10px;font-size:13.5px}
+
+/* align-items:start so a short chart card does not inherit dead space from a
+   taller neighbour in the same row. */
+.viz-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:16px;margin-top:16px;align-items:start}
+.viz-card{padding:16px 18px 18px}
+.viz-card-head{display:flex;align-items:flex-start;gap:12px;margin-bottom:10px}
+.viz-card-head h3{font-size:15px}
+.viz-card-head p{margin:4px 0 0;max-width:52ch}
+.viz-card-head .btn{margin-left:auto;flex:none}
+.viz-plot{width:100%;min-height:40px}
+.viz-table{max-height:320px;overflow:auto}
+
+/* --- Chart marks -------------------------------------------------------- */
+/* One hue throughout: these are single-series charts, so colour carries no
+   identity and a value-ramp would double-encode the bar length. */
+.viz{display:block;overflow:visible}
+.viz-bar{fill:#2a78d6}
+.viz-bar:hover,.viz-bar:focus{fill:#1c5cab;outline:none}
+.viz-slice{stroke:var(--surface);stroke-width:2}   /* the 2px surface gap */
+.viz-slice:hover,.viz-slice:focus{opacity:.85;outline:none}
+.viz-grid{stroke:var(--line);stroke-width:1}       /* solid hairline, never dashed */
+.viz-axis{stroke:var(--line-strong);stroke-width:1}
+.viz-boundary{stroke:var(--faint);stroke-width:1}
+.viz-tick,.viz-label,.viz-axis-title,.viz-boundary-label{
+  fill:var(--muted);font-family:var(--font);font-size:11px;font-variant-numeric:tabular-nums;
+}
+.viz-axis-title{font-size:10.5px;letter-spacing:.05em;text-transform:uppercase}
+.viz-boundary-label{font-weight:700;fill:var(--body)}
+.viz-value{fill:var(--ink);font-family:var(--font);font-size:12px;font-weight:600}
+.viz-value.is-zero{fill:var(--faint);font-weight:500}
+.viz-slice-label{fill:#fff;font-family:var(--font);font-size:12px;font-weight:700}
+.viz-donut-total{fill:var(--ink);font-family:var(--font);font-size:26px;font-weight:700}
+.viz-donut-caption{fill:var(--muted);font-family:var(--font);font-size:11px}
+
+.viz-legend{display:flex;flex-wrap:wrap;gap:6px 16px;list-style:none;margin:12px 0 0;padding:0;font-size:12.5px;color:var(--body)}
+.viz-legend li{display:flex;align-items:center;gap:7px}
+.viz-swatch{width:11px;height:11px;border-radius:3px;flex:none}
+
+.viz-tip{
+  position:fixed;z-index:80;pointer-events:none;opacity:0;transition:opacity .12s;
+  background:var(--ink);color:#fff;font-size:12.5px;padding:6px 10px;border-radius:7px;
+  box-shadow:var(--shadow);white-space:nowrap;
+}
+.viz-tip.is-open{opacity:1}
+
+/* --- Meters (topic and question performance) ---------------------------- */
+.meters{display:flex;flex-direction:column;gap:13px}
+.meter-head{display:flex;align-items:baseline;gap:10px;margin-bottom:5px}
+.meter-label{
+  font-size:13.5px;color:var(--body);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.meter-value{margin-left:auto;flex:none;font-size:13.5px;font-variant-numeric:tabular-nums;color:var(--ink)}
+.meter-outof{color:var(--muted);font-weight:500}
+.meter-track{height:9px;border-radius:5px;background:#cde2fb;overflow:hidden}
+.meter-fill{height:100%;border-radius:5px;background:#2a78d6}
+.meter-sub{font-size:11.5px;color:var(--muted);padding-top:4px}
+
+.data-table{width:100%;border-collapse:collapse;font-size:13.5px}
+.data-table th,.data-table td{padding:8px 10px;border-bottom:1px solid var(--line);text-align:left}
+.data-table th{
+  font-size:11px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);
+  background:var(--panel);position:sticky;top:0;
+}
+.data-table td.num,.data-table th.num{text-align:right;font-variant-numeric:tabular-nums}
+.data-table.compact th,.data-table.compact td{padding:6px 9px}
+.pill{display:inline-block;padding:1px 8px;border-radius:999px;font-size:12px;font-weight:600}
+.pill-warn{background:var(--warn-bg);color:var(--warn);border:1px solid var(--warn-line)}
+
+@media (max-width:640px){
+  .boundary-row{grid-template-columns:70px 100px 1fr;gap:10px}
+  .viz-grid{grid-template-columns:1fr}
+}
+
+@media (prefers-reduced-motion:reduce){
+  .viz-tip{transition:none}
 }

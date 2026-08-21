@@ -7,10 +7,15 @@
 
 import assert from 'node:assert/strict';
 import { newAssessment, newQuestion, newPupil, setMark, applyPaperType, resizeQuestions } from '../js/model.js';
-import { totalPossible, gradeForMark, pupilResult, questionAverages, classSummary } from '../js/grades.js';
+import {
+  totalPossible, gradeForMark, boundariesReady, pupilResult, allResults,
+  questionAverages, classSummary, topicAverages, gradeDistribution,
+  completedTotals, markProgress, formatMark,
+} from '../js/grades.js';
 import { buildPupilFeedback, pupilSendStatus } from '../js/feedback-engine.js';
 import { validateMark, validateAssessment, isValidEmail, isValidUrl, csvSafeCell } from '../js/validation.js';
 import { parsePupilCsv, parseCsv, toCsv } from '../js/csv.js';
+import { buildLock, pinMatches, validatePin } from '../js/lock.js';
 import { renderFeedbackEmail } from '../shared/email-template.js';
 
 let passed = 0;
@@ -29,7 +34,6 @@ function test(name, fn) {
 function fixture() {
   const a = newAssessment({ paperType: 'higher' });
   a.exam.name = 'Test Paper';
-  a.exam.teacherName = 'Ms Okafor';
   a.questions = [
     { ...newQuestion('1', 5), topic: 'Algebra', reteachUrl: 'https://example.com/algebra' },
     { ...newQuestion('2', 5), topic: 'algebra', reteachUrl: 'https://example.com/algebra/' }, // dupe topic + dupe URL
@@ -66,17 +70,25 @@ test('a mark below every boundary still gets the lowest grade', () => {
   assert.equal(gradeForMark([{ grade: 'U', minMark: 0 }, { grade: '4', minMark: 20 }], 3), 'U');
 });
 
-test('pupilResult totals, percentage and grade', () => {
+test('a fully marked paper produces a total and a grade', () => {
   const a = fixture();
   const p = a.pupils[0].id;
   [5, 4, 5, 1, 2, 3].forEach((m, i) => setMark(a, p, a.questions[i].id, m)); // 20/30
   const r = pupilResult(a, p);
   assert.equal(r.achieved, 20);
+  assert.equal(r.total, 20);
   assert.equal(r.possible, 30);
-  assert.equal(Math.round(r.percentage), 67);
   assert.equal(r.grade, '6');
   assert.equal(r.isComplete, true);
-  assert.equal(r.isProvisional, false);
+});
+
+test('no percentage is exposed anywhere in a result', () => {
+  const a = fixture();
+  const p = a.pupils[0].id;
+  a.questions.forEach((q, i) => setMark(a, p, q.id, i));
+  const r = pupilResult(a, p);
+  assert.equal('percentage' in r, false);
+  assert.equal('percentageOfMarked' in r, false);
 });
 
 /* ============================== blank marks ============================== */
@@ -91,7 +103,9 @@ test('a blank mark is not treated as zero', () => {
   assert.equal(r.blankCount, 5);
   assert.equal(r.markedCount, 1);
   assert.equal(r.isComplete, false);
-  assert.equal(r.isProvisional, true, 'grade should be flagged provisional');
+  // The whole point: an unfinished paper has no total and no grade.
+  assert.equal(r.total, null, 'total must be withheld until every question is marked');
+  assert.equal(r.grade, null, 'grade must be withheld until every question is marked');
 });
 
 test('zero and blank are different values', () => {
@@ -108,14 +122,15 @@ test('zero and blank are different values', () => {
   assert.equal(blank.blankCount, 6);
 });
 
-test('blankPolicy "zero" counts blanks as zero and clears the provisional flag', () => {
+test('blankPolicy "zero" counts blanks as zero and releases the total', () => {
   const a = fixture();
   a.exam.blankPolicy = 'zero';
   const p = a.pupils[0].id;
   setMark(a, p, a.questions[0].id, 5);
   const r = pupilResult(a, p);
   assert.equal(r.achieved, 5);
-  assert.equal(r.isProvisional, false);
+  assert.equal(r.total, 5);
+  assert.equal(r.isComplete, true);
   assert.equal(r.grade, '3');
 });
 
@@ -265,7 +280,12 @@ test('question averages exclude blanks', () => {
   const avg = questionAverages(a)[0];
   assert.equal(avg.count, 2);
   assert.equal(avg.average, 4);
-  assert.equal(avg.percentage, 80);
+  assert.equal(avg.lowest, 3);
+  assert.equal(avg.highest, 5);
+  assert.equal(avg.notMarked, 1);
+  // proportion is geometry for the bar width, never shown as a figure
+  assert.equal(avg.proportion, 0.8);
+  assert.equal('percentage' in avg, false);
 });
 
 test('class summary ignores pupils with no marks at all', () => {
@@ -350,12 +370,20 @@ test('a pupil with no marks cannot be sent to', () => {
   assert.ok(status.blockedReasons.includes('No marks entered'));
 });
 
-test('a partly-marked pupil can be sent to, but is warned about', () => {
+test('a partly-marked pupil cannot be sent to', () => {
   const a = fixture();
   setMark(a, a.pupils[0].id, a.questions[0].id, 5);
   const status = pupilSendStatus(a, a.pupils[0]);
+  assert.equal(status.canSend, false, 'no honest total exists yet, so no feedback');
+  assert.ok(status.blockedReasons.some((r) => r.includes('not marked')));
+});
+
+test('a fully marked pupil with an email can be sent to', () => {
+  const a = fixture();
+  a.questions.forEach((q) => setMark(a, a.pupils[0].id, q.id, 3));
+  const status = pupilSendStatus(a, a.pupils[0]);
   assert.equal(status.canSend, true);
-  assert.ok(status.warnings.some((w) => w.includes('not marked')));
+  assert.deepEqual(status.blockedReasons, []);
 });
 
 /* ================================== CSV ================================= */
@@ -456,13 +484,121 @@ test('pupil names are escaped, so a name cannot inject HTML', () => {
   assert.ok(html.includes('&lt;script&gt;'));
 });
 
-test('a provisional result carries a visible warning in the email', () => {
+test('an unfinished paper says so in the preview instead of inventing a grade', () => {
   const a = fixture();
   setMark(a, a.pupils[0].id, a.questions[0].id, 5);
   const fb = buildPupilFeedback(a, a.pupils[0]);
   const { html, text } = renderFeedbackEmail(fb, { audience: 'pupil' });
-  assert.ok(html.includes('provisional'));
-  assert.ok(text.includes('provisional'));
+  assert.equal(fb.totalMarks, null);
+  assert.ok(html.includes('not been marked yet'));
+  assert.ok(text.includes('not been marked yet'));
+});
+
+test('no percentage figure appears in a rendered email', () => {
+  const a = fixture();
+  a.questions.forEach((q) => setMark(a, a.pupils[0].id, q.id, 3));
+  const fb = buildPupilFeedback(a, a.pupils[0]);
+  const { html, text } = renderFeedbackEmail(fb, { audience: 'pupil' });
+  assert.equal(/\d+%/.test(text), false, 'plain-text email must contain no percentage');
+  // In the HTML, "%" only ever appears inside layout attributes such as width="100%".
+  const visibleText = html.replace(/<[^>]*>/g, ' ');
+  assert.equal(/\d+\s*%/.test(visibleText), false, 'visible email text must contain no percentage');
+  assert.equal(html.includes('Percentage'), false);
+});
+
+test('admin wording overrides are applied and placeholders filled', () => {
+  const a = fixture();
+  a.questions.forEach((q) => setMark(a, a.pupils[0].id, q.id, 3));
+  a.pupils[0].name = 'Amelia Stone';
+  const fb = buildPupilFeedback(a, a.pupils[0]);
+  const { html, subject } = renderFeedbackEmail(fb, {
+    audience: 'pupil',
+    text: { pupil: { greeting: 'Morning {firstName}!', subject: '{examName} — how you did' } },
+  });
+  assert.ok(html.includes('Morning Amelia!'));
+  assert.equal(subject, 'Test Paper — how you did');
+});
+
+test('wording overrides cannot inject markup into an email', () => {
+  const a = fixture();
+  a.questions.forEach((q) => setMark(a, a.pupils[0].id, q.id, 3));
+  const fb = buildPupilFeedback(a, a.pupils[0]);
+  const { html } = renderFeedbackEmail(fb, {
+    audience: 'pupil',
+    text: { pupil: { greeting: '<img src=x onerror=alert(1)>' } },
+  });
+  assert.ok(!html.includes('<img src=x'));
+  assert.ok(html.includes('&lt;img'));
+});
+
+/* ========================= analysis calculations ======================== */
+
+test('topic averages group questions case-insensitively', () => {
+  const a = fixture();
+  a.pupils = [newPupil('A', 'a@x.com'), newPupil('B', 'b@x.com')];
+  // Q1 "Algebra" (5) and Q2 "algebra" (5) must merge into one topic.
+  setMark(a, a.pupils[0].id, a.questions[0].id, 4);
+  setMark(a, a.pupils[1].id, a.questions[0].id, 2);   // Q1 average 3
+  setMark(a, a.pupils[0].id, a.questions[1].id, 5);
+  setMark(a, a.pupils[1].id, a.questions[1].id, 1);   // Q2 average 3
+
+  const topics = topicAverages(a);
+  const algebra = topics.find((t) => t.topic.toLowerCase() === 'algebra');
+  assert.equal(topics.filter((t) => t.topic.toLowerCase() === 'algebra').length, 1);
+  assert.equal(algebra.topic, 'Algebra', 'the first-seen spelling is kept');
+  assert.equal(algebra.questionCount, 2);
+  assert.equal(algebra.averageMark, 6);
+  assert.equal(algebra.maxMarks, 10);
+});
+
+test('questions with no topic are left out of topic analysis', () => {
+  const a = fixture();
+  a.questions.forEach((q) => setMark(a, a.pupils[0].id, q.id, 2));
+  assert.ok(topicAverages(a).every((t) => t.topic.trim() !== ''));
+});
+
+test('grade distribution counts only fully marked papers', () => {
+  const a = fixture();
+  a.pupils = [newPupil('A', 'a@x.com'), newPupil('B', 'b@x.com')];
+  a.questions.forEach((q) => setMark(a, a.pupils[0].id, q.id, q.maxMarks)); // 30/30
+  setMark(a, a.pupils[1].id, a.questions[0].id, 5);                        // part marked
+
+  const distribution = gradeDistribution(a);
+  assert.equal(distribution.graded, 1, 'the part-marked paper is not graded');
+  assert.equal(distribution.rows.find((r) => r.grade === '9').count, 1);
+  assert.equal(completedTotals(a).length, 1);
+});
+
+test('class summary reports an average mark and the grade it earns', () => {
+  const a = fixture();
+  a.pupils = [newPupil('A', 'a@x.com'), newPupil('B', 'b@x.com')];
+  a.questions.forEach((q) => setMark(a, a.pupils[0].id, q.id, q.maxMarks)); // 30
+  a.questions.forEach((q) => setMark(a, a.pupils[1].id, q.id, 0));          // 0
+
+  const summary = classSummary(a);
+  assert.equal(summary.count, 2);
+  assert.equal(summary.averageMark, 15);
+  assert.equal(summary.averageGrade, gradeForMark(a.gradeBoundaries, 15));
+  assert.equal('averagePercentage' in summary, false);
+});
+
+test('class summary excludes part-marked papers from the average', () => {
+  const a = fixture();
+  a.pupils = [newPupil('A', 'a@x.com'), newPupil('B', 'b@x.com')];
+  a.questions.forEach((q) => setMark(a, a.pupils[0].id, q.id, q.maxMarks));
+  setMark(a, a.pupils[1].id, a.questions[0].id, 0);
+  const summary = classSummary(a);
+  assert.equal(summary.count, 1, 'only the finished paper counts');
+  assert.equal(summary.averageMark, 30);
+});
+
+test('mark progress counts filled cells, not attainment', () => {
+  const a = fixture();
+  a.pupils = [newPupil('A', 'a@x.com')];
+  setMark(a, a.pupils[0].id, a.questions[0].id, 0);
+  const progress = markProgress(a);
+  assert.equal(progress.cells, 6);
+  assert.equal(progress.entered, 1, 'a mark of zero still counts as entered');
 });
 
 /* ============================ model behaviour =========================== */
@@ -499,6 +635,46 @@ test('URL validation only allows http and https', () => {
   assert.equal(isValidUrl('javascript:alert(1)'), false);
   assert.equal(isValidUrl('data:text/html,x'), false);
   assert.equal(isValidUrl('example.com'), false);
+});
+
+/* ============================== setup lock ============================== */
+
+// These are async because PIN hashing uses the Web Crypto API, so they run in
+// their own pass before the report is printed.
+async function asyncTest(name, fn) {
+  try { await fn(); passed += 1; process.stdout.write('.'); }
+  catch (error) { failed += 1; failures.push({ name, error }); process.stdout.write('F'); }
+}
+
+await asyncTest('the right PIN unlocks and a wrong one does not', async () => {
+  const a = fixture();
+  a.settings.lock = await buildLock('4821');
+  assert.equal(await pinMatches(a, '4821'), true);
+  assert.equal(await pinMatches(a, '4822'), false);
+  assert.equal(await pinMatches(a, ''), false);
+});
+
+await asyncTest('the PIN itself is never stored, only a salted hash', async () => {
+  const a = fixture();
+  a.settings.lock = await buildLock('1234');
+  const serialised = JSON.stringify(a.settings.lock);
+  assert.equal(serialised.includes('1234'), false, 'the PIN must not be recoverable from the save file');
+  assert.ok(a.settings.lock.salt, 'a salt is stored');
+  assert.equal(a.settings.lock.pinHash.length, 64, 'SHA-256 hex digest');
+});
+
+await asyncTest('the same PIN on two assessments produces different hashes', async () => {
+  const first = await buildLock('1234');
+  const second = await buildLock('1234');
+  assert.notEqual(first.pinHash, second.pinHash, 'salting must prevent hash reuse');
+});
+
+await asyncTest('PIN format is enforced', async () => {
+  assert.equal(validatePin('1234'), null);
+  assert.equal(validatePin('12345678'), null);
+  assert.ok(validatePin('123'), 'too short is rejected');
+  assert.ok(validatePin('12345a'), 'letters are rejected');
+  assert.ok(validatePin(''), 'empty is rejected');
 });
 
 /* ================================ report ================================ */

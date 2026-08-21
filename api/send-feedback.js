@@ -95,6 +95,7 @@ export default async function handler(req, res) {
     const { subject, html, text } = renderFeedbackEmail(message.data, {
       audience: message.type,
       schoolName: request.schoolName,
+      text: request.emailText,
     });
     return {
       id: message.id,

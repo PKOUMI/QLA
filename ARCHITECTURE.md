@@ -127,7 +127,8 @@ later is a contained change.
 - Grade boundary entry and validation
 - Adding pupils manually
 - CSV template download and CSV import + validation
-- The whole marksheet: entry, per-cell validation, totals, percentages, grades
+- The whole marksheet: entry, per-cell validation, totals, grades
+- The whole Analyse page, including every chart (hand-written SVG, no library)
 - Question averages
 - What Went Well / Even Better If / Focus On calculation
 - Email preview
@@ -337,7 +338,7 @@ onto Postgres tables later (the table split is noted against each part).
 
 ```jsonc
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "id": "asmt_lz3k9x2p",              // -> assessments.id
   "createdAt": "2026-08-20T10:00:00Z",
   "updatedAt": "2026-08-20T10:42:11Z",
@@ -345,8 +346,6 @@ onto Postgres tables later (the table split is noted against each part).
   "exam": {                            // -> assessments.*
     "name": "Autumn Term Maths Assessment 1",
     "subject": "Mathematics",
-    "className": "10B/Ma1",
-    "teacherName": "Ms Okafor",
     "teacherEmail": "a.okafor@school.sch.uk",   // used as Reply-To
     "date": "2026-09-24",
     "paperType": "higher",             // "foundation" | "higher"
@@ -382,9 +381,31 @@ onto Postgres tables later (the table split is noted against each part).
   },
 
   "feedback": {                        // -> assessment settings
-    "sendToParents": false,
+    "sendToParents": false,            // master switch for the Parents column
     "selectedPupilIds": ["p_1"],
+    "parentSelectedPupilIds": ["p_1"], // separate, so a pupil can be emailed
+                                       // while their parents deliberately are
+                                       // not (safeguarding)
     "teacherNote": "Well done everyone..."
+  },
+
+  "settings": {                        // -> becomes per-user/per-school rows
+    "lock": {                          // Setup lock: deters accidents, NOT security
+      "enabled": true,
+      "salt": "9f2c…",                 // the PIN itself is never stored
+      "pinHash": "sha256 hex…"
+    },
+    "analyse": {                       // which charts this teacher wants
+      "charts": { "gradeDistribution": true, "topicPerformance": true,
+                  "questionAverages": true, "markDistribution": true },
+      "gradeChartType": "bar",         // "bar" | "donut"
+      "topicSort": "weakest"           // "weakest" | "strongest" | "name"
+    }
+  },
+
+  "emailText": {                       // admin overrides for the email wording
+    "pupil":  { "greeting": "Hi {firstName},", "signOff": "Best wishes," },
+    "parent": { "greeting": "Dear Parent / Guardian," }
   },
 
   "sendLog": [                         // -> send_log (audit trail)
@@ -393,12 +414,25 @@ onto Postgres tables later (the table split is noted against each part).
 }
 ```
 
-Three deliberate decisions worth flagging:
+Five deliberate decisions worth flagging:
 
 - **`marks` is a nested object, not an array**, so a lookup is `marks[pupilId][questionId]`
   — O(1), and it survives questions or pupils being reordered or deleted.
 - **`null` means "not marked"; `0` means "scored zero".** These are different facts
   about a child and the app never conflates them.
+- **No percentage is stored or displayed anywhere.** GCSE-style assessment is read
+  against grade boundaries, so the app reports marks and grades only. Proportions are
+  still computed internally — for the >80% / <25% feedback rules and for the width of
+  a bar — but they are never surfaced as a figure. The single exception is "marks
+  entered", which measures progress through marking, not attainment.
+- **A total and a grade exist only for a fully marked paper.** `pupilResult().total`
+  and `.grade` are `null` until every question has a mark, the UI shows a dash, and
+  such a pupil cannot be selected for feedback. Half a paper scored against a
+  full-paper boundary would read as a fail, which would be worse than showing nothing.
+- **`settings.lock` stores a salted SHA-256, never the PIN.** It is checked in the
+  browser, so it stops a colleague editing the paper by accident during a marking
+  session — it does not stop anyone determined. Real permissions need the server
+  (§ Authentication).
 - **IDs, not indexes, are used everywhere.** Delete question 3 and nothing else breaks.
 
 ---

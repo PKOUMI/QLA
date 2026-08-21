@@ -85,14 +85,11 @@ export function validateRequest(body) {
         pupilName: str(data.pupilName, LIMITS.maxNameLength) || 'Student',
         examName: str(data.examName, LIMITS.maxNameLength) || 'Assessment',
         subject: str(data.subject, LIMITS.maxNameLength),
-        className: str(data.className, LIMITS.maxNameLength),
-        teacherName: str(data.teacherName, LIMITS.maxNameLength),
         examDate: str(data.examDate, 30),
         totalMarks: num(data.totalMarks) ?? 0,
         totalPossible: num(data.totalPossible) ?? 0,
-        percentage: num(data.percentage) ?? 0,
         grade: str(data.grade, 4),
-        isProvisional: Boolean(data.isProvisional),
+        isComplete: data.isComplete !== false,
         blankCount: num(data.blankCount) ?? 0,
         teacherNote: str(data.teacherNote, LIMITS.maxNoteLength),
         rows: rows.map((row) => ({
@@ -118,11 +115,37 @@ export function validateRequest(body) {
       idempotencyKey: str(body.idempotencyKey, 120),
       assessmentId: str(body.assessmentId, 80),
       replyTo,
-      replyToName: str(body.replyToName, LIMITS.maxNameLength),
       schoolName: str(body.schoolName, LIMITS.maxNameLength),
+      emailText: toWording(body.text),
       messages: clean,
     },
   };
+}
+
+/**
+ * Admin-edited email wording. Only the known keys are accepted and each is
+ * length-capped, so the endpoint cannot be used to push arbitrary content into
+ * an email. The template HTML-escapes every one of these values when it renders,
+ * so markup in them is displayed as text rather than executed.
+ */
+const WORDING_KEYS = [
+  'subject', 'greeting', 'intro', 'wwwHeading', 'ebiHeading', 'focusHeading',
+  'nothingFlagged', 'closing', 'signOff', 'signOffName',
+];
+
+function toWording(value) {
+  if (!value || typeof value !== 'object') return undefined;
+  const out = {};
+  for (const audience of ['pupil', 'parent']) {
+    const source = value[audience];
+    if (!source || typeof source !== 'object') continue;
+    const fields = {};
+    for (const key of WORDING_KEYS) {
+      if (typeof source[key] === 'string') fields[key] = str(source[key], LIMITS.maxNoteLength);
+    }
+    if (Object.keys(fields).length) out[audience] = fields;
+  }
+  return Object.keys(out).length ? out : undefined;
 }
 
 function toTopicList(value) {

@@ -1,7 +1,7 @@
 /**
  * app.js — application shell.
  *
- * Owns: the current assessment, saving, routing between the three views, and
+ * Owns: the current assessment, saving, routing between the four views, and
  * the two utility dialogs (Settings and Saved assessments).
  *
  * The pattern is deliberately simple and framework-free:
@@ -17,6 +17,7 @@ import { validateAssessment } from './validation.js';
 import { $, el, toast, openModal, closeModal, confirmDialog, debounce, downloadFile, readFileAsText, plural } from './ui.js';
 import * as setupView from './views/setup.js';
 import * as marksheetView from './views/marksheet.js';
+import * as analyseView from './views/analyse.js';
 import * as feedbackView from './views/feedback.js';
 import { checkHealth } from './api.js';
 
@@ -27,7 +28,9 @@ export const state = {
   route: 'setup',
 };
 
-const VIEWS = { setup: setupView, marksheet: marksheetView, feedback: feedbackView };
+const VIEWS = {
+  setup: setupView, marksheet: marksheetView, analyse: analyseView, feedback: feedbackView,
+};
 
 /** Re-render only the view the teacher is looking at. */
 export function render() {
@@ -92,7 +95,7 @@ window.addEventListener('beforeunload', (event) => {
 
 /* --- Routing ------------------------------------------------------------- */
 
-const ROUTES = ['setup', 'marksheet', 'feedback'];
+const ROUTES = ['setup', 'marksheet', 'analyse', 'feedback'];
 
 export function goTo(route) {
   if (!ROUTES.includes(route)) route = 'setup';
@@ -120,6 +123,7 @@ function updateStepStates() {
 
   document.querySelector('.step[data-goto="setup"]').classList.toggle('is-done', setupDone);
   document.querySelector('.step[data-goto="marksheet"]').classList.toggle('is-done', setupDone && anyMarks);
+  document.querySelector('.step[data-goto="analyse"]').classList.toggle('is-done', setupDone && anyMarks);
   document.querySelector('.step[data-goto="feedback"]').classList.toggle('is-done', assessment.sendLog.length > 0);
 }
 
@@ -239,11 +243,11 @@ async function openAssessments() {
   } else {
     const table = el('table', { class: 'data' },
       el('thead', {}, el('tr', {},
-        el('th', { text: 'Assessment' }), el('th', { text: 'Class' }),
+        el('th', { text: 'Assessment' }), el('th', { text: 'Subject' }),
         el('th', { text: 'Pupils' }), el('th', { text: 'Last edited' }), el('th', {}))),
       el('tbody', {}, list.map((item) => el('tr', {},
         el('td', {}, el('strong', { text: item.name })),
-        el('td', { text: item.className || '—' }),
+        el('td', { text: item.subject || '—' }),
         el('td', { text: String(item.pupilCount) }),
         el('td', { text: new Date(item.updatedAt).toLocaleString('en-GB', { dateStyle: 'short', timeStyle: 'short' }) }),
         el('td', { style: 'text-align:right;white-space:nowrap' },
@@ -311,6 +315,10 @@ async function boot() {
   const initial = window.location.hash.replace('#', '');
   goTo(ROUTES.includes(initial) ? initial : 'setup');
   setSaveState('Saved');
+
+  // Tells the boot guard in index.html that everything loaded. Without this it
+  // shows a "could not start" message after a few seconds.
+  window.__QLA_BOOTED = true;
 
   const pupils = state.assessment.pupils.length;
   if (pupils) toast(`Welcome back — ${plural(pupils, 'pupil')} loaded.`, 'info', 3000);

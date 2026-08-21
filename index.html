@@ -28,8 +28,12 @@
       <span class="step-num">2</span><span class="step-label">Marksheet</span>
     </button>
     <span class="step-sep" aria-hidden="true"></span>
+    <button class="step" data-goto="analyse" type="button">
+      <span class="step-num">3</span><span class="step-label">Analyse</span>
+    </button>
+    <span class="step-sep" aria-hidden="true"></span>
     <button class="step" data-goto="feedback" type="button">
-      <span class="step-num">3</span><span class="step-label">Feedback</span>
+      <span class="step-num">4</span><span class="step-label">Feedback</span>
     </button>
   </nav>
 
@@ -49,6 +53,18 @@
     <p>Enter the exam details, the questions, your grade boundaries and your class. You only have to do this once per assessment.</p>
   </div>
 
+  <!-- Setup lock. Stops a colleague changing the paper while marks are entered. -->
+  <div class="lockbar" id="lockbar">
+    <span class="lockbar-ico" id="lockbar-ico" aria-hidden="true">&#128275;</span>
+    <div class="lockbar-text">
+      <strong id="lockbar-title">Set up is unlocked</strong>
+      <span class="hint" id="lockbar-note">Anyone using this browser can change the questions, boundaries and pupil list.</span>
+    </div>
+    <div class="spacer"></div>
+    <button class="btn btn-sm" id="btn-lock" type="button">Lock set up</button>
+    <button class="btn btn-sm btn-primary" id="btn-unlock" type="button" hidden>Enter PIN to unlock</button>
+  </div>
+
   <!-- Exam details -->
   <div class="card">
     <div class="card-head"><h2>Exam details</h2></div>
@@ -61,14 +77,6 @@
         <div class="field">
           <label for="exam-subject">Subject</label>
           <input type="text" id="exam-subject" placeholder="e.g. Mathematics" autocomplete="off">
-        </div>
-        <div class="field">
-          <label for="exam-class">Class</label>
-          <input type="text" id="exam-class" placeholder="e.g. 10B/Ma1" autocomplete="off">
-        </div>
-        <div class="field">
-          <label for="exam-teacher">Your name</label>
-          <input type="text" id="exam-teacher" placeholder="e.g. Ms Okafor" autocomplete="name">
         </div>
         <div class="field">
           <label for="exam-teacher-email">Your email <span class="hint" style="font-weight:400">(used as reply-to)</span></label>
@@ -130,10 +138,10 @@
         <option value="foundation">Foundation</option>
         <option value="higher">Higher</option>
       </select>
-      <p>Enter the <strong>minimum mark</strong> needed for each grade. U is fixed at 0 so every mark always receives a grade.</p>
+      <p>Enter the <strong>minimum mark</strong> needed for each grade, highest grade first &mdash; the way boundaries are published. U is fixed at 0 so every mark always receives a grade.</p>
     </div>
     <div class="card-body">
-      <div class="grid cols-4" id="boundaries-grid"></div>
+      <div class="boundary-list" id="boundaries-grid"></div>
       <div id="boundaries-errors" style="margin-top:14px"></div>
     </div>
   </div>
@@ -147,7 +155,9 @@
       <button class="btn btn-sm" id="btn-download-template" type="button">Download CSV template</button>
       <button class="btn btn-sm" id="btn-import-csv" type="button">Import CSV</button>
       <button class="btn btn-sm btn-primary" id="btn-add-pupil" type="button">+ Add pupil</button>
+      <button class="btn btn-sm btn-danger" id="btn-clear-pupils" type="button">Clear all</button>
       <input type="file" id="csv-file" accept=".csv,text/csv" class="visually-hidden">
+      <p class="note-inline">Importing a CSV <strong>adds</strong> to this list &mdash; it never deletes pupils you have already entered. If a name or email matches someone already here, you will be asked what to do with the duplicate.</p>
     </div>
     <div class="card-body flush">
       <div id="pupils-empty" class="empty">
@@ -185,7 +195,7 @@
 <section class="view" id="view-marksheet" aria-labelledby="marksheet-title">
   <div class="view-head">
     <h1 id="marksheet-title">Marksheet</h1>
-    <p>Enter marks question by question. Totals, percentages and grades update as you type. Leave a cell blank if you have not marked it yet — blank is <strong>not</strong> the same as zero.</p>
+    <p>Enter marks question by question. A total and a grade appear once every question for that pupil has been marked. Leave a cell blank if you have not marked it yet — blank is <strong>not</strong> the same as zero.</p>
   </div>
 
   <div id="marksheet-blocker"></div>
@@ -233,6 +243,22 @@
   <div class="view-nav">
     <button class="btn" data-goto="setup" type="button">← Back to set up</button>
     <div class="spacer"></div>
+    <button class="btn btn-primary" data-goto="analyse" type="button">Continue to analysis →</button>
+  </div>
+</section>
+
+<!-- ============================================================= ANALYSE -->
+<section class="view" id="view-analyse" aria-labelledby="analyse-title">
+  <div class="view-head">
+    <h1 id="analyse-title">Analyse</h1>
+    <p>How the class performed, question by question and topic by topic. Everything here updates from the marksheet &mdash; there is nothing to fill in.</p>
+  </div>
+
+  <div id="analyse-body"></div>
+
+  <div class="view-nav">
+    <button class="btn" data-goto="marksheet" type="button">← Back to marksheet</button>
+    <div class="spacer"></div>
     <button class="btn btn-primary" data-goto="feedback" type="button">Continue to feedback →</button>
   </div>
 </section>
@@ -276,17 +302,24 @@
       <div class="spacer"></div>
       <button class="btn btn-sm" id="btn-select-all" type="button">Select all</button>
       <button class="btn btn-sm" id="btn-select-none" type="button">Clear</button>
+      <p class="note-inline">The <strong>Parents</strong> column is separate on purpose: untick a pupil there to send feedback to them but not to their parents.</p>
     </div>
     <div class="card-body flush">
       <div class="table-wrap">
         <table class="data send-table" id="send-table">
           <thead>
             <tr>
-              <th class="chk" scope="col"><input type="checkbox" id="check-all" aria-label="Select all pupils"></th>
+              <th class="chk" scope="col">
+                <input type="checkbox" id="check-all" aria-label="Send feedback to all pupils">
+                <span class="chk-caption">Pupils</span>
+              </th>
+              <th class="chk" scope="col" id="parent-col-head">
+                <input type="checkbox" id="check-all-parents" aria-label="Send feedback to all parents">
+                <span class="chk-caption">Parents</span>
+              </th>
               <th scope="col">Pupil</th>
               <th scope="col">Email</th>
               <th class="num" scope="col">Marks</th>
-              <th class="num" scope="col">%</th>
               <th scope="col" style="text-align:center">Grade</th>
               <th scope="col" style="width:90px;text-align:center">Preview</th>
             </tr>
@@ -313,6 +346,7 @@
     <div class="card-foot">
       <button class="btn btn-primary" id="btn-send" type="button">Send feedback</button>
       <button class="btn" id="btn-preview-first" type="button">Preview an example email</button>
+      <button class="btn" id="btn-edit-wording" type="button">Edit email wording</button>
       <div class="spacer"></div>
       <span class="hint" id="send-hint"></span>
     </div>
@@ -342,6 +376,102 @@
     <p>This tool runs entirely in your browser and needs JavaScript enabled.</p>
   </div>
 </noscript>
+
+<!--
+  Boot guard. If a JavaScript file fails to download — the commonest deployment
+  problem, usually a folder that did not upload — the page still renders and
+  looks perfectly normal, but nothing works. Rather than leave you guessing,
+  this checks every file the app needs and names the ones that are missing.
+-->
+<script>
+(function () {
+  // Every file the front end needs, relative to index.html.
+  var REQUIRED = [
+    'config.js',
+    'css/styles.css',
+    'js/app.js',
+    'js/model.js',
+    'js/storage.js',
+    'js/grades.js',
+    'js/validation.js',
+    'js/csv.js',
+    'js/feedback-engine.js',
+    'js/api.js',
+    'js/ui.js',
+    'js/lock.js',
+    'js/charts.js',
+    'js/views/setup.js',
+    'js/views/marksheet.js',
+    'js/views/analyse.js',
+    'js/views/feedback.js',
+    'shared/email-template.js'
+  ];
+
+  function show(html) {
+    var banner = document.createElement('div');
+    banner.setAttribute('role', 'alert');
+    banner.style.cssText = 'position:fixed;inset:0;z-index:9999;overflow:auto;background:#fef2f2;'
+      + 'padding:32px 20px;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif;'
+      + 'color:#7f1d1d;line-height:1.55';
+    banner.innerHTML = '<div style="max-width:66ch;margin:0 auto">' + html + '</div>';
+    document.body.appendChild(banner);
+  }
+
+  function code(text) {
+    return '<code style="font-family:ui-monospace,Menlo,Consolas,monospace;font-size:13px;'
+      + 'background:#fee2e2;padding:1px 5px;border-radius:4px">' + text + '</code>';
+  }
+
+  // Check each file individually, so we can name the missing one rather than
+  // just the entry point that failed because of it.
+  function diagnose() {
+    var missing = [];
+    var pending = REQUIRED.length;
+
+    REQUIRED.forEach(function (path) {
+      fetch(path, { method: 'GET', cache: 'no-store' })
+        .then(function (response) { if (!response.ok) missing.push(path + '  (' + response.status + ')'); })
+        .catch(function () { missing.push(path + '  (could not be reached)'); })
+        .then(function () {
+          pending -= 1;
+          if (pending > 0) return;
+          if (window.__QLA_BOOTED) return; // it started while we were checking
+
+          if (missing.length) {
+            show('<h1 style="margin:0 0 8px;font-size:20px;color:#7f1d1d">The app could not start</h1>'
+              + '<p style="margin:0 0 12px">' + missing.length + ' of the ' + REQUIRED.length
+              + ' files this app needs ' + (missing.length === 1 ? 'is' : 'are')
+              + ' missing from the server, so none of the buttons work.</p>'
+              + '<p style="margin:0 0 6px"><strong>Missing:</strong></p>'
+              + '<ul style="margin:0 0 14px 18px;padding:0">'
+              + missing.map(function (m) { return '<li>' + code(m) + '</li>'; }).join('')
+              + '</ul>'
+              + '<p style="margin:0 0 12px"><strong>This is almost always a folder that did not upload.</strong> '
+              + 'GitHub&rsquo;s drag-and-drop uploader skips nested folders without warning. '
+              + 'Open your repository, check the folder above exists, and re-upload just that folder.</p>'
+              + '<p style="margin:0;font-size:13px">File names are case-sensitive on GitHub Pages: '
+              + code('Styles.css') + ' will not match ' + code('styles.css') + '.</p>');
+          } else {
+            // Everything is present, so it is a code or browser problem instead.
+            show('<h1 style="margin:0 0 8px;font-size:20px;color:#7f1d1d">The app could not start</h1>'
+              + '<p style="margin:0 0 12px">All ' + REQUIRED.length + ' files are present on the server, '
+              + 'so this is not a missing-file problem.</p>'
+              + '<p style="margin:0 0 12px">Press ' + code('F12') + ', open the <strong>Console</strong> tab '
+              + 'and reload the page. The red error message there will say what went wrong.</p>'
+              + '<p style="margin:0;font-size:13px">If it mentions <em>MIME type</em> or <em>module</em>, '
+              + 'the files were served incorrectly. If it mentions a syntax error, one file uploaded incomplete '
+              + '&mdash; re-upload it.</p>');
+          }
+        });
+    });
+  }
+
+  window.addEventListener('DOMContentLoaded', function () {
+    // 6 seconds, so a slow connection is not mistaken for a broken deployment.
+    setTimeout(function () { if (!window.__QLA_BOOTED) diagnose(); }, 6000);
+  });
+})();
+</script>
 
 <script type="module" src="js/app.js"></script>
 </body>

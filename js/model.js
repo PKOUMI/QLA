@@ -5,7 +5,7 @@
  * lets the same logic run in a browser, in a Node test, and (later) on a server.
  */
 
-export const SCHEMA_VERSION = 1;
+export const SCHEMA_VERSION = 2;
 
 /** Grades available for each paper tier, lowest first. */
 export const GRADE_SETS = {
@@ -52,8 +52,6 @@ export function newAssessment(overrides = {}) {
     exam: {
       name: '',
       subject: '',
-      className: '',
-      teacherName: '',
       teacherEmail: '',
       date: '',
       paperType,
@@ -63,7 +61,30 @@ export function newAssessment(overrides = {}) {
     gradeBoundaries: defaultBoundaries(paperType),
     pupils: [],
     marks: {},
-    feedback: { sendToParents: false, selectedPupilIds: [], teacherNote: '' },
+    feedback: {
+      sendToParents: false,
+      selectedPupilIds: [],
+      // Kept separate from selectedPupilIds so a pupil can receive feedback
+      // while their parents deliberately do not (e.g. safeguarding).
+      parentSelectedPupilIds: [],
+      teacherNote: '',
+    },
+    // Admin controls. `unlocked` is session state, not a saved secret.
+    settings: {
+      lock: { enabled: false, pinHash: null, salt: null },
+      analyse: {
+        charts: {
+          gradeDistribution: true,
+          topicPerformance: true,
+          questionAverages: true,
+          markDistribution: true,
+        },
+        gradeChartType: 'bar', // 'bar' | 'donut'
+        topicSort: 'weakest',  // 'weakest' | 'strongest' | 'name'
+      },
+    },
+    // Teacher/admin overrides for the wording of the feedback emails.
+    emailText: {},
     sendLog: [],
     ...overrides,
   };
@@ -138,6 +159,21 @@ export function migrate(raw) {
   const doc = { ...newAssessment(), ...raw };
   doc.exam = { ...newAssessment().exam, ...(raw.exam || {}) };
   doc.feedback = { ...newAssessment().feedback, ...(raw.feedback || {}) };
+  if (!Array.isArray(doc.feedback.parentSelectedPupilIds)) doc.feedback.parentSelectedPupilIds = [];
+
+  // v1 -> v2: settings/emailText added, exam.className and exam.teacherName removed.
+  const freshSettings = newAssessment().settings;
+  doc.settings = {
+    lock: { ...freshSettings.lock, ...(raw.settings?.lock || {}) },
+    analyse: {
+      ...freshSettings.analyse,
+      ...(raw.settings?.analyse || {}),
+      charts: { ...freshSettings.analyse.charts, ...(raw.settings?.analyse?.charts || {}) },
+    },
+  };
+  doc.emailText = raw.emailText && typeof raw.emailText === 'object' ? raw.emailText : {};
+  delete doc.exam.className;
+  delete doc.exam.teacherName;
   doc.questions = Array.isArray(raw.questions) && raw.questions.length
     ? raw.questions
     : [newQuestion('1', 1)];

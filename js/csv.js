@@ -171,9 +171,10 @@ export function parsePupilCsv(text, existingPupils = []) {
 
 /** Marksheet export: pupils down, questions across, plus totals and grade. */
 export function marksheetCsv(assessment, results) {
-  const header = ['Pupil', 'Email', ...assessment.questions.map((q) => `Q${q.number}`), 'Total', 'Out of', 'Percentage', 'Grade'];
-  const topics = ['Topic / AO', '', ...assessment.questions.map((q) => q.topic), '', '', '', ''];
-  const maxes = ['Max marks', '', ...assessment.questions.map((q) => q.maxMarks), '', '', '', ''];
+  const header = ['Pupil', 'Email', ...assessment.questions.map((q) => `Q${q.number}`), 'Total', 'Out of', 'Grade'];
+  // Three trailing blanks to line up with Total / Out of / Grade.
+  const topics = ['Topic / AO', '', ...assessment.questions.map((q) => q.topic), '', '', ''];
+  const maxes = ['Max marks', '', ...assessment.questions.map((q) => q.maxMarks), '', '', ''];
   const body = assessment.pupils.map((pupil) => {
     const result = results.find((r) => r.pupilId === pupil.id);
     const marks = assessment.questions.map((q) => {
@@ -182,9 +183,9 @@ export function marksheetCsv(assessment, results) {
     });
     return [
       pupil.name, pupil.email, ...marks,
-      result.hasAnyMark ? result.achieved : '',
+      // Blank until the paper is complete, matching what the marksheet shows.
+      result.total === null ? '' : result.total,
       result.possible,
-      result.hasAnyMark ? `${Math.round(result.percentage)}%` : '',
       result.grade ?? '',
     ];
   });
