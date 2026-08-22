@@ -53,6 +53,23 @@ document.addEventListener('keydown', (event) => {
   }
 });
 
+/**
+ * Called by the router when the teacher leaves this page.
+ *
+ * Full-window mode hides the site header, so it must not survive the marksheet
+ * being left — including by the browser's Back button, which is how it was
+ * found: Back took you to another page with no header and no way to get it
+ * back short of reloading.
+ */
+export function onLeave() {
+  if (isExpanded) setExpanded(false);
+}
+
+// A second line of defence. Some browsers fire popstate without a hashchange
+// (a same-hash history entry, or a restored session), and the header going
+// missing is bad enough to be worth guarding twice.
+window.addEventListener('popstate', () => { if (isExpanded) setExpanded(false); });
+
 export function init() {
   $('#btn-expand-marks').addEventListener('click', () => setExpanded(!isExpanded));
 

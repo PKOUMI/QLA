@@ -84,6 +84,13 @@ Two rules the code sticks to:
    (`{pupilName, mark, outOf, topics}`), never HTML. That prevents the endpoint
    being used as an open mail relay to send arbitrary content from your domain.
 
+### Trying it with realistic data
+
+`sample-data/` holds a full GCSE Combined Science paper with 90 pupils and every
+mark entered. Load it from **Assessments → Restore from backup**. Every email
+address in it ends in `.invalid`, so nothing can reach a real person. See
+`sample-data/README.md`.
+
 ### Files
 
 | File | Responsibility |

@@ -42,6 +42,10 @@ qla/
 │       ├── marksheet.js
 │       ├── analyse.js
 │       └── feedback.js
+├── sample-data/                <- test data; safe to delete before going live
+│   ├── gcse-science-paper-90-pupils.json
+│   ├── gcse-class-list-90-pupils.csv
+│   └── generate.mjs
 ├── shared/
 │   └── email-template.js       used by BOTH the browser preview and the server
 ├── api/                        <- Vercel only; GitHub Pages ignores this

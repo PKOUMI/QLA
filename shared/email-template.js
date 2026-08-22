@@ -175,8 +175,6 @@ export const DEFAULT_EMAIL_TEXT = {
     // Optional. Left empty by default, and omitted from the email entirely
     // when empty, so a teacher who writes nothing gets a tidy email.
     extraMessage: '',
-    closing: 'If anything here does not make sense, ask your teacher in your next lesson — '
-      + 'that is exactly what this feedback is for.',
     signOff: 'Best wishes,',
     signOffName: 'Your teacher',
   },
@@ -192,7 +190,6 @@ export const DEFAULT_EMAIL_TEXT = {
     nothingFlagged: 'No individual topics were flagged as particular strengths or weaknesses '
       + 'this time — performance was fairly even across the paper.',
     extraMessage: '',
-    closing: 'If you would like to discuss these results, please contact the school in the usual way.',
     signOff: 'Best wishes,',
     signOffName: 'Your child\'s teacher',
   },
@@ -208,7 +205,6 @@ export const FIELD_LABELS = {
   focusHeading: '“Focus on” heading',
   nothingFlagged: 'Shown when nothing stands out',
   extraMessage: 'Optional message',
-  closing: 'Closing paragraph',
   signOff: 'Sign-off',
   signOffName: 'Signed by',
 };
@@ -380,10 +376,7 @@ export function renderFeedbackEmail(data, options = {}) {
       </td></tr>
 
       <tr><td style="padding:6px 28px 26px 28px;">
-        <p${edit('closing')} style="margin:0;font-size:15px;line-height:23px;color:${COLOURS.body};">
-          ${asHtml('closing')}
-        </p>
-        <p style="margin:16px 0 0 0;font-size:15px;color:${COLOURS.body};"><span${edit('signOff')}>${asHtml('signOff')}</span><br><strong${edit('signOffName')} style="color:${COLOURS.ink};">${asHtml('signOffName')}</strong></p>
+        <p style="margin:0;font-size:15px;color:${COLOURS.body};"><span${edit('signOff')}>${asHtml('signOff')}</span><br><strong${edit('signOffName')} style="color:${COLOURS.ink};">${asHtml('signOffName')}</strong></p>
       </td></tr>
 
       <tr><td style="background:${COLOURS.panel};border-top:1px solid ${COLOURS.line};padding:14px 28px;">

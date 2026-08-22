@@ -99,6 +99,12 @@ const ROUTES = ['setup', 'marksheet', 'analyse', 'feedback'];
 
 export function goTo(route) {
   if (!ROUTES.includes(route)) route = 'setup';
+
+  // Let the view being left tidy up after itself. The marksheet uses this to
+  // drop out of full-window mode: without it, using the browser's Back button
+  // while expanded would land you on another page with the header still hidden.
+  if (state.route !== route) VIEWS[state.route]?.onLeave?.();
+
   state.route = route;
   for (const name of ROUTES) {
     $(`#view-${name}`).classList.toggle('is-active', name === route);

@@ -706,6 +706,19 @@ test('the optional message appears once written, in the email and the plain text
   assert.ok(text.includes('Bring your corrections to Thursday.'));
 });
 
+test('the closing paragraph is gone from both versions of the email', () => {
+  const a = fixture();
+  a.questions.forEach((q) => setMark(a, a.pupils[0].id, q.id, 3));
+  const fb = buildPupilFeedback(a, a.pupils[0]);
+  for (const audience of ['pupil', 'parent']) {
+    const { html } = renderFeedbackEmail(fb, { audience });
+    assert.equal(html.includes('contact the school'), false);
+    assert.equal(html.includes('ask your teacher'), false);
+  }
+  assert.equal('closing' in DEFAULT_EMAIL_TEXT.pupil, false);
+  assert.equal('closing' in DEFAULT_EMAIL_TEXT.parent, false);
+});
+
 test('exactly one editable box follows the Focus on section', () => {
   const a = fixture();
   a.questions.forEach((q) => setMark(a, a.pupils[0].id, q.id, 3));
@@ -715,7 +728,7 @@ test('exactly one editable box follows the Focus on section', () => {
   const afterFocus = html.slice(html.indexOf('Focus on'));
   const keys = [...afterFocus.matchAll(/data-qla-edit="(\w+)"/g)].map((m) => m[1]);
   // The sign-off is part of the letter's ending, not the message area.
-  assert.deepEqual(keys, ['extraMessage', 'closing', 'signOff', 'signOffName']);
+  assert.deepEqual(keys, ['extraMessage', 'signOff', 'signOffName']);
   assert.equal(keys.filter((k) => k === 'nothingFlagged').length, 0,
     'the "nothing stood out" line is no longer a second box');
 });

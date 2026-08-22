@@ -1,5 +1,55 @@
 # Changelog
 
+## v5 — change request of 22 August 2026
+
+### Marksheet
+- **Fixed: the site header stayed hidden after pressing browser Back while the
+  grid was expanded.** Full-window mode hides the header, and nothing was
+  clearing it when the browser navigated away, so you landed on another page
+  with no header and no way back short of reloading. Leaving the marksheet now
+  always exits full screen — by Back, by Escape, by the Exit button, or by any
+  in-app navigation. There is a second guard on `popstate` for browsers that
+  navigate without firing a hash change, because a missing header is bad
+  enough to be worth catching twice.
+- Note that while expanded the step navigation is deliberately hidden. The ways
+  out are **Exit full screen**, **Esc**, or browser Back — all three now behave.
+
+### Email
+- **The closing paragraph is gone**, in both the pupil and parent versions —
+  "If you would like to discuss these results, please contact the school in the
+  usual way" and its pupil equivalent. The email now runs from the feedback
+  sections, through the optional message, straight to the sign-off. That
+  leaves eight editable regions rather than nine.
+
+### Sample data (new)
+- A `sample-data/` folder with a full GCSE paper and a year group's marks, for
+  testing the app as it would really be used.
+- **GCSE Combined Science: Trilogy — Biology Paper 1**, Higher tier, 70 marks,
+  30 questions numbered as on the real paper (`01.1`, `01.2`, `02.1`…), across
+  9 topics, each with a reteach link.
+- **90 pupils**, every mark entered, 10 with no parent address. Mean 37.5 out
+  of 70, range 13–57, grades from U to 8 — a believable spread rather than
+  random numbers, because each pupil has an ability and each question a
+  difficulty.
+- **Every email address is unreachable.** They end in `.invalid`, a top-level
+  domain reserved by RFC 2606 that can never be registered and never resolves,
+  so nothing can be delivered to a real person even by accident.
+- Supplied as both a full assessment (`.json`, loaded via Assessments →
+  Restore from backup) and a class list (`.csv`, for the CSV import), plus the
+  generator script so the class can be changed or rebuilt.
+- Worth knowing before testing sends: those addresses will all **fail**, which
+  is the point — it exercises the failure reporting. Send a handful at a time
+  rather than all 170, since hard bounces count against a sending reputation.
+  `sample-data/README.md` covers this.
+
+### Found while building the sample data
+- The app's own duplicate-email check caught two colliding addresses in the
+  first draft of the class (two pupils sharing a surname and initial). The
+  generator now breaks the tie with a number, the way a school MIS does. Good
+  sign for the validation.
+
+---
+
 ## v4 — change request of 21 August 2026
 
 ### Marksheet
