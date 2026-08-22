@@ -200,6 +200,18 @@ deliver. Step 7 covers switching to your own domain.
    your browser sent no `Origin` header matching the allowlist. It proves the
    function is running and the allowlist is on.
 
+   Read the JSON, because it tells you what the deployment actually has:
+
+   ```jsonc
+   { "allowedOriginsConfigured": 2 }   // good: the variable reached this deployment
+   { "allowedOriginsConfigured": 0 }   // ALLOWED_ORIGINS is missing — redeploy
+   ```
+
+   **Environment variables only apply to deployments created after they were
+   saved.** Adding or editing one in the Vercel dashboard changes nothing about
+   the deployment that is already running. After any change:
+   **Deployments → the most recent → ⋯ → Redeploy**.
+
 ### Where the API key actually lives
 
 Vercel stores environment variables encrypted and injects them into the function

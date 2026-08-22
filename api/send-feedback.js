@@ -37,7 +37,13 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: 'The server has no ALLOWED_ORIGINS configured, so it refuses all requests. Set it in your environment variables.' });
   }
   if (!cors.isAllowed) {
-    return res.status(403).json({ error: 'This origin is not allowed to use this API. Add it to ALLOWED_ORIGINS.' });
+    return res.status(403).json({
+      error: cors.allowedCount === 0
+        ? 'ALLOWED_ORIGINS is empty in the running deployment. Set it in Vercel, then redeploy — environment variables only apply to deployments created after they were saved.'
+        : `This origin is not allowed to use this API. The server received "${cors.origin || '(none)'}" and it is not in ALLOWED_ORIGINS.`,
+      originReceived: cors.origin || null,
+      allowedOriginsConfigured: cors.allowedCount,
+    });
   }
 
   const key = checkSharedKey(req);

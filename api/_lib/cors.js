@@ -32,7 +32,16 @@ export function applyCors(req, res) {
     return { handled: true, isAllowed };
   }
 
-  return { handled: false, isAllowed, origin, configured: list.length > 0 };
+  return {
+    handled: false,
+    isAllowed,
+    origin,
+    configured: list.length > 0,
+    // The COUNT only, never the values. Enough to tell "the variable never
+    // reached this deployment" apart from "the value is wrong", which is the
+    // one distinction that matters when CORS is refusing you.
+    allowedCount: list.length,
+  };
 }
 
 /** Shared-secret check. See ARCHITECTURE.md §6 — this is not real auth. */
