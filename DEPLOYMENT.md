@@ -196,20 +196,27 @@ deliver. Step 7 covers switching to your own domain.
 5. Click **Deploy**. It takes about a minute.
 6. Copy your API address, e.g. `https://qla-abc123.vercel.app`.
 7. Check it works — open `https://qla-abc123.vercel.app/api/health` in a browser.
-   You will get a `403` with a JSON error, and **that is the correct answer**:
-   your browser sent no `Origin` header matching the allowlist. It proves the
-   function is running and the allowlist is on.
-
-   Read the JSON, because it tells you what the deployment actually has:
+   You should get JSON like this:
 
    ```jsonc
-   { "allowedOriginsConfigured": 2 }   // good: the variable reached this deployment
-   { "allowedOriginsConfigured": 0 }   // ALLOWED_ORIGINS is missing — redeploy
+   {
+     "ok": true,
+     "emailConfigured": true,
+     "fromAddress": "onboarding@resend.dev",
+     "dryRun": false,
+     "sharedKeyRequired": true
+   }
    ```
 
-   **Environment variables only apply to deployments created after they were
-   saved.** Adding or editing one in the Vercel dashboard changes nothing about
-   the deployment that is already running. After any change:
+   A browser typing the address directly sends no `Origin` header, so this is
+   not a cross-site request and the allowlist does not apply — you see the real
+   status. That makes this the quickest way to check the backend is alive and
+   what it thinks it is configured with.
+
+   `"emailConfigured": false` means `RESEND_API_KEY` did not reach this
+   deployment. **Environment variables only apply to deployments created after
+   they were saved** — adding one in the dashboard does nothing to what is
+   already running. After any change:
    **Deployments → the most recent → ⋯ → Redeploy**.
 
 ### Where the API key actually lives

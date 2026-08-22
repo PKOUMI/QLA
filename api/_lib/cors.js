@@ -16,10 +16,22 @@ export function applyCors(req, res) {
   const list = allowedOrigins();
   const origin = (req.headers.origin || '').replace(/\/$/, '');
 
-  // With no list configured, refuse browser calls rather than allowing all.
-  const isAllowed = list.length > 0 && list.includes(origin);
+  /*
+   * No Origin header means this is NOT a cross-site browser request: either
+   * same-origin (the app served from this same domain), or a non-browser
+   * caller like curl. Blocking those adds no security — a browser cannot be
+   * tricked into omitting Origin on a cross-origin fetch, and anyone can call
+   * the endpoint directly regardless. The shared key is what actually gates
+   * this API; CORS only stops OTHER websites using your browser session.
+   *
+   * It did add confusion: serving the app from the API's own domain failed
+   * with "origin not allowed" while naming no origin at all.
+   */
+  const sameOriginOrDirect = origin === '';
+  const isAllowed = sameOriginOrDirect || (list.length > 0 && list.includes(origin));
 
-  if (isAllowed) {
+  // Only echo an Origin back when there was one. Nothing to allow otherwise.
+  if (isAllowed && origin) {
     res.setHeader('Access-Control-Allow-Origin', origin);
     res.setHeader('Vary', 'Origin');
   }
