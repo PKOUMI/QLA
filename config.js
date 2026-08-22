@@ -13,7 +13,7 @@ window.QLA_CONFIG = {
    *   'https://qla-api.vercel.app'
    *   'https://api.yourdomain.co.uk'
    */
-  apiBaseUrl: 'https://qla-virid.vercel.app',
+  apiBaseUrl: 'https://qla-virid.vercel.app','https://api.everypupil.com'
 
   /** Shown in the email header. Optional. */
   schoolName: '',
