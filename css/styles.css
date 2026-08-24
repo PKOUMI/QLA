@@ -3,7 +3,12 @@
    Organised as: tokens -> base -> layout -> components -> views -> responsive
    ========================================================================== */
 
-/* --- Design tokens ------------------------------------------------------ */
+/* --- Design tokens ------------------------------------------------------ *
+ *
+ * BRANDING LIVES HERE. To rebrand the app, change the values in this block
+ * and nothing else in this file. Everything below refers to these names, never
+ * to a colour directly. See BRANDING.md for the other two places.
+ * ------------------------------------------------------------------------ */
 :root {
   --brand-50:#eef2ff; --brand-100:#e0e7ff; --brand-200:#c7d2fe;
   --brand-500:#6366f1; --brand-600:#4f46e5; --brand-700:#4338ca; --brand-900:#312e81;
@@ -15,6 +20,18 @@
   --ok:#059669; --ok-bg:#ecfdf5; --ok-line:#a7f3d0;
   --warn:#b45309; --warn-bg:#fffbeb; --warn-line:#fde68a;
   --bad:#dc2626;  --bad-bg:#fef2f2;  --bad-line:#fecaca;
+
+  /* Derived from the brand hue: row hover, toast grounds, callout text. */
+  --row-hover:#fbfcfe;
+  --ok-ink:#065f46; --warn-ink:#78350f; --bad-ink:#7f1d1d;
+  --toast-ok:#065f46; --toast-bad:#991b1b; --toast-warn:#92400e;
+  --email-bg:#eef2f7;
+
+  /* Charts. One hue for single-series marks, plus an ordered ramp used only
+     by the grade donut. Validated for contrast against a white card. */
+  --viz-fill:#2a78d6; --viz-fill-hover:#1c5cab; --viz-track:#cde2fb;
+  --viz-ramp-0:#86b6ef; --viz-ramp-1:#5598e7; --viz-ramp-2:#2a78d6;
+  --viz-ramp-3:#1c5cab; --viz-ramp-4:#104281;
 
   --radius:10px; --radius-lg:14px;
   --shadow-sm:0 1px 2px rgba(15,23,42,.06);
@@ -166,7 +183,7 @@ table.data th{
   border-bottom:1px solid var(--line);white-space:nowrap;position:sticky;top:0;z-index:2;
 }
 table.data td{padding:6px 12px;border-bottom:1px solid var(--line);vertical-align:middle}
-table.data tbody tr:hover td{background:#fbfcfe}
+table.data tbody tr:hover td{background:var(--row-hover)}
 table.data td input,table.data td select{padding:6px 9px;font-size:13.5px}
 table.data .num{text-align:right;font-variant-numeric:tabular-nums}
 table.data tfoot td{background:var(--panel);font-weight:600;color:var(--ink);border-top:2px solid var(--line-strong)}
@@ -202,9 +219,9 @@ table.data tfoot td{background:var(--panel);font-weight:600;color:var(--ink);bor
 .callout strong{display:block;color:var(--ink);margin-bottom:2px}
 .callout ul{margin:6px 0 0;padding-left:18px}
 .callout li{margin-bottom:3px}
-.callout-warn{background:var(--warn-bg);border-color:var(--warn-line);color:#78350f}
-.callout-bad{background:var(--bad-bg);border-color:var(--bad-line);color:#7f1d1d}
-.callout-ok{background:var(--ok-bg);border-color:var(--ok-line);color:#065f46}
+.callout-warn{background:var(--warn-bg);border-color:var(--warn-line);color:var(--warn-ink)}
+.callout-bad{background:var(--bad-bg);border-color:var(--bad-line);color:var(--bad-ink)}
+.callout-ok{background:var(--ok-bg);border-color:var(--ok-line);color:var(--ok-ink)}
 .callout-info{background:var(--brand-50);border-color:var(--brand-200);color:var(--brand-900)}
 .callout .ico{flex:none;font-size:15px;line-height:1.4}
 
@@ -247,7 +264,7 @@ table.marksheet thead th.pupil-col{left:0;z-index:5}
 }
 .pupil-col{position:sticky;left:0;background:var(--surface);z-index:2;min-width:170px;max-width:220px}
 thead .pupil-col{background:var(--panel)}
-.marksheet tbody tr:hover .pupil-col{background:#fbfcfe}
+.marksheet tbody tr:hover .pupil-col{background:var(--row-hover)}
 /* One line per pupil. The email address moves to the cell's tooltip and a
    warning icon, which is what actually matters here, and buys back a whole
    text line on every row. */
@@ -323,17 +340,17 @@ tr.avg-row .avg-pct{font-size:10.5px;opacity:.75;font-variant-numeric:tabular-nu
 .modal-foot{padding:14px 20px;border-top:1px solid var(--line);background:var(--panel);display:flex;gap:9px;justify-content:flex-end;flex-wrap:wrap}
 .modal-foot .left{margin-right:auto}
 
-.preview-frame{width:100%;height:min(62vh,620px);border:0;display:block;background:#eef2f7}
+.preview-frame{width:100%;height:min(62vh,620px);border:0;display:block;background:var(--email-bg)}
 
 /* --- Toasts ------------------------------------------------------------- */
 .toasts{position:fixed;bottom:18px;right:18px;z-index:200;display:flex;flex-direction:column;gap:9px;max-width:400px}
 .toast{
   display:flex;gap:10px;align-items:flex-start;padding:12px 15px;border-radius:var(--radius);
-  background:var(--ink);color:#f1f5f9;box-shadow:var(--shadow-lg);font-size:13.5px;line-height:1.45;
+  background:var(--ink);color:var(--panel);box-shadow:var(--shadow-lg);font-size:13.5px;line-height:1.45;
   animation:slide .2s ease;
 }
 @keyframes slide{from{opacity:0;transform:translateX(14px)}to{opacity:1;transform:none}}
-.toast.ok{background:#065f46} .toast.bad{background:#991b1b} .toast.warn{background:#92400e}
+.toast.ok{background:var(--toast-ok)} .toast.bad{background:var(--toast-bad)} .toast.warn{background:var(--toast-warn)}
 .toast .x{margin-left:auto;background:none;border:0;color:inherit;opacity:.6;cursor:pointer;font-size:16px;line-height:1;padding:0 2px}
 .toast .x:hover{opacity:1}
 
@@ -423,7 +440,7 @@ tr.avg-row .avg-pct{font-size:10.5px;opacity:.75;font-variant-numeric:tabular-nu
   flex-basis:100%;margin:8px 0 0;font-size:12.5px;line-height:1.45;color:var(--muted);
 }
 .note{padding:12px 14px;border-radius:var(--radius);font-size:13.5px;line-height:1.5;margin:0 0 16px}
-.note-warn{background:var(--warn-bg);border:1px solid var(--warn-line);color:#7c2d12}
+.note-warn{background:var(--warn-bg);border:1px solid var(--warn-line);color:var(--warn-ink)}
 
 /* --- Marksheet tweaks --------------------------------------------------- */
 .avg-outof{font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums}
@@ -487,9 +504,14 @@ tr.avg-row .avg-pct{font-size:10.5px;opacity:.75;font-variant-numeric:tabular-nu
 /* One hue throughout: these are single-series charts, so colour carries no
    identity and a value-ramp would double-encode the bar length. */
 .viz{display:block;overflow:visible}
-.viz-bar{fill:#2a78d6}
-.viz-bar:hover,.viz-bar:focus{fill:#1c5cab;outline:none}
-.viz-slice{stroke:var(--surface);stroke-width:2}   /* the 2px surface gap */
+.viz-bar{fill:var(--viz-fill)}
+.viz-bar:hover,.viz-bar:focus{fill:var(--viz-fill-hover);outline:none}
+/* The donut's ordered ramp. Classes rather than inline fills, so every
+   colour in the app is changeable from the token block above. */
+.viz-slice{stroke:var(--surface);stroke-width:2}
+.viz-ramp-0{fill:var(--viz-ramp-0)} .viz-ramp-1{fill:var(--viz-ramp-1)}
+.viz-ramp-2{fill:var(--viz-ramp-2)} .viz-ramp-3{fill:var(--viz-ramp-3)}
+.viz-ramp-4{fill:var(--viz-ramp-4)}   /* the 2px surface gap */
 .viz-slice:hover,.viz-slice:focus{opacity:.85;outline:none}
 .viz-grid{stroke:var(--line);stroke-width:1}       /* solid hairline, never dashed */
 .viz-axis{stroke:var(--line-strong);stroke-width:1}
@@ -524,8 +546,8 @@ tr.avg-row .avg-pct{font-size:10.5px;opacity:.75;font-variant-numeric:tabular-nu
 }
 .meter-value{margin-left:auto;flex:none;font-size:13.5px;font-variant-numeric:tabular-nums;color:var(--ink)}
 .meter-outof{color:var(--muted);font-weight:500}
-.meter-track{height:9px;border-radius:5px;background:#cde2fb;overflow:hidden}
-.meter-fill{height:100%;border-radius:5px;background:#2a78d6}
+.meter-track{height:9px;border-radius:5px;background:var(--viz-track);overflow:hidden}
+.meter-fill{height:100%;border-radius:5px;background:var(--viz-fill)}
 .meter-sub{font-size:11.5px;color:var(--muted);padding-top:4px}
 
 .data-table{width:100%;border-collapse:collapse;font-size:13.5px}
@@ -565,7 +587,7 @@ tr.avg-row .avg-pct{font-size:10.5px;opacity:.75;font-variant-numeric:tabular-nu
 /* Mirrors the placeholder highlight used inside the email preview, so the
    explanation and the thing it explains look the same. */
 .ph-chip{background:rgba(79,70,229,.12);border-radius:3px;padding:0 4px;color:var(--brand-700);font-weight:600}
-.preview-frame{width:100%;border:0;background:#eef2f7;flex:1 1 auto;min-height:56vh}
+.preview-frame{width:100%;border:0;background:var(--email-bg);flex:1 1 auto;min-height:56vh}
 
 /* Locked pages: the card contents recede, the lock bar does not. */
 .view.is-locked .lockbar{opacity:1}
@@ -609,3 +631,24 @@ body.marks-expanded #marksheet-card .stat .k{margin-top:0;font-size:10px}
 .scope-banner{grid-column:1 / -1;margin:0}
 .scope-banner strong{display:block}
 .confirm-lead{margin:0 0 10px;font-size:15.5px;color:var(--ink)}
+
+/* --- Send results ------------------------------------------------------- */
+.retry-bar{
+  display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin:0 0 14px;
+  padding:12px 16px;background:var(--warn-bg);border:1px solid var(--warn-line);
+  border-radius:var(--radius);
+}
+.retry-bar .spacer{margin-left:auto}
+.retry-bar strong{color:var(--warn-ink)}
+.results-panel{border:1px solid var(--line);border-radius:var(--radius);overflow:hidden}
+.results-head{
+  display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+  padding:10px 12px;background:var(--panel);border-bottom:1px solid var(--line);
+}
+.results-head .spacer{margin-left:auto}
+.result-tabs{display:flex;gap:6px;flex-wrap:wrap}
+/* Tall enough to scan a whole year group without leaving the page. */
+.results-table{max-height:340px;overflow:auto}
+.results-table td.reason{color:var(--muted);font-size:12.5px;min-width:220px}
+.pill-ok{background:var(--ok-bg);color:var(--ok);border:1px solid var(--ok-line)}
+.pill-bad{background:var(--bad-bg);color:var(--bad);border:1px solid var(--bad-line)}

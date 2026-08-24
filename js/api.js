@@ -48,6 +48,9 @@ async function request(path, { method = 'POST', body, timeoutMs = 45000 } = {}) 
       const error = new Error(message);
       error.status = response.status;
       error.retryable = response.status === 429 || response.status >= 500;
+      // How long the server asked us to wait. Honoured rather than guessed at.
+      const header = Number(response.headers.get('Retry-After'));
+      error.retryAfter = Number.isFinite(header) && header > 0 ? header : 0;
       throw error;
     }
     return payload;
@@ -81,7 +84,15 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
  * (rate limits and server errors). Exponential backoff with jitter so that
  * several teachers hitting the limit at once do not retry in lockstep.
  */
-async function sendBatchWithRetry(batch, { maxAttempts = 3 } = {}) {
+/**
+ * Send one batch, waiting out rate limits rather than failing on them.
+ *
+ * A 429 is not a failed email — it is the server saying "not yet". Treating it
+ * as a failure was the bug that made a 170-email send report 120 failures the
+ * user then had to sort out by hand. Now the wait is honoured, reported to the
+ * progress bar, and the batch goes again.
+ */
+async function sendBatchWithRetry(batch, { maxAttempts = 6, onWait } = {}) {
   let lastError;
   for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
     try {
@@ -89,7 +100,15 @@ async function sendBatchWithRetry(batch, { maxAttempts = 3 } = {}) {
     } catch (error) {
       lastError = error;
       if (!error.retryable || attempt === maxAttempts) throw error;
-      const wait = Math.min(8000, 700 * 2 ** (attempt - 1)) + Math.random() * 400;
+
+      // The server tells us how long to wait; trust it over a guess. If the
+      // header is not readable, a 429 still means "wait a while" — so back off
+      // properly rather than hammering it again in under a second.
+      const serverWait = Number(error.retryAfter) > 0 ? Number(error.retryAfter) * 1000 : 0;
+      const base = error.status === 429 ? 5000 : 700;
+      const wait = serverWait || Math.min(30000, base * 2 ** (attempt - 1)) + Math.random() * 400;
+
+      if (onWait && wait > 1500) await onWait(Math.ceil(wait / 1000));
       await sleep(wait);
     }
   }
@@ -105,7 +124,10 @@ async function sendBatchWithRetry(batch, { maxAttempts = 3 } = {}) {
  * @returns {{results: Array, sent: number, failed: number}}
  */
 export async function sendFeedbackEmails(messages, context, onProgress = () => {}) {
-  const size = Math.max(1, Math.min(25, (window.QLA_CONFIG?.batchSize) || 8));
+  // 60 per request. The server sends each request through the provider's
+  // batch endpoint, so a 400-pupil year group is seven requests rather than
+  // fifty — which is what made the old limit of 8 unusable at real scale.
+  const size = Math.max(1, Math.min(100, (window.QLA_CONFIG?.batchSize) || 60));
   const results = [];
   let done = 0;
 
@@ -129,6 +151,11 @@ export async function sendFeedbackEmails(messages, context, onProgress = () => {
           // Only present when this pupil's email has been edited on its own.
           text: message.text || undefined,
         })),
+      }, {
+        // Surface the wait so the teacher sees "pausing", not a frozen bar.
+        onWait: (seconds) => onProgress({
+          done, total: messages.length, phase: 'waiting', waitSeconds: seconds,
+        }),
       });
       results.push(...(response.results || []));
     } catch (error) {
@@ -142,8 +169,9 @@ export async function sendFeedbackEmails(messages, context, onProgress = () => {
     done += slice.length;
     onProgress({ done, total: messages.length, phase: 'sending' });
 
-    // Gentle pacing between batches keeps us inside provider rate limits.
-    if (start + size < messages.length) await sleep(400);
+    // A short pause between requests. The provider allows 10 a second; this
+    // stays well inside that without making a big send feel slow.
+    if (start + size < messages.length) await sleep(250);
   }
 
   return {

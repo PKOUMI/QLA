@@ -48,7 +48,13 @@ export default async function handler(req, res) {
 
   const key = checkSharedKey(req);
   if (!key.ok) {
-    return res.status(401).json({ error: 'Invalid or missing access key. Check the key in the app\'s Settings matches APP_SHARED_KEY on the server.' });
+    return res.status(401).json({
+      error: key.provided
+        ? `The access key sent by the app (${key.providedLength} characters) does not match APP_SHARED_KEY on the server. Re-copy it into Settings, and remember that changing it in Vercel needs a redeploy.`
+        : 'No access key was sent. Open the app\'s Settings and paste the same value as APP_SHARED_KEY on the server.',
+      keyProvided: key.provided,
+      keyProvidedLength: key.providedLength,
+    });
   }
 
   // --- Rate limit -------------------------------------------------------

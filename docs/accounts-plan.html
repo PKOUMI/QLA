@@ -1,0 +1,1110 @@
+<title>EveryPupil Accounts Plan</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
+
+<style>
+/* ==========================================================================
+   Tokens. The complete light palette lives on bare :root; the dark blocks
+   redefine ONLY these values, so nothing is defined solely behind a media
+   query. Neutrals carry a slight violet bias, taken from the product's indigo,
+   so the greys read as chosen rather than inherited.
+   ========================================================================== */
+:root{
+  color-scheme:light;
+  --ground:#fbfbfd;
+  --surface:#ffffff;
+  --surface-2:#f4f4f8;
+  --ink:#16151f;
+  --ink-2:#3c3a4c;
+  --muted:#5d5b6b;
+  --faint:#8b8899;
+  --line:#e6e5ee;
+  --line-2:#d3d1de;
+  --accent:#4f46e5;
+  --accent-ink:#3730a3;
+  --accent-wash:#eeecfb;
+  --warn:#a2570b;
+  --warn-wash:#fdf4e6;
+  --good:#046a4e;
+  --good-wash:#e9f6f1;
+  --shadow:0 1px 2px rgba(22,21,31,.05), 0 14px 34px -22px rgba(22,21,31,.3);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --ground:#131218;
+    --surface:#1b1a22;
+    --surface-2:#22212b;
+    --ink:#f4f3f8;
+    --ink-2:#d4d2e0;
+    --muted:#a5a2b5;
+    --faint:#7d7a8d;
+    --line:#2c2b36;
+    --line-2:#3b3947;
+    --accent:#9d95f5;
+    --accent-ink:#c3bdfa;
+    --accent-wash:#241f45;
+    --warn:#e0a45c;
+    --warn-wash:#2e2415;
+    --good:#5fc4a2;
+    --good-wash:#132a24;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 14px 34px -22px rgba(0,0,0,.8);
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --ground:#131218;
+  --surface:#1b1a22;
+  --surface-2:#22212b;
+  --ink:#f4f3f8;
+  --ink-2:#d4d2e0;
+  --muted:#a5a2b5;
+  --faint:#7d7a8d;
+  --line:#2c2b36;
+  --line-2:#3b3947;
+  --accent:#9d95f5;
+  --accent-ink:#c3bdfa;
+  --accent-wash:#241f45;
+  --warn:#e0a45c;
+  --warn-wash:#2e2415;
+  --good:#5fc4a2;
+  --good-wash:#132a24;
+  --shadow:0 1px 2px rgba(0,0,0,.4), 0 14px 34px -22px rgba(0,0,0,.8);
+}
+
+*,*::before,*::after{box-sizing:border-box}
+body{
+  margin:0;background:var(--ground);color:var(--ink-2);
+  font-family:"IBM Plex Sans",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  font-size:16.5px;line-height:1.65;-webkit-font-smoothing:antialiased;
+}
+h1,h2,h3,h4{font-family:Newsreader,Georgia,"Times New Roman",serif;color:var(--ink);
+  font-weight:600;line-height:1.2;text-wrap:balance;margin:0}
+h1{font-size:clamp(2.1rem,4.6vw,3rem);letter-spacing:-.015em}
+h2{font-size:clamp(1.45rem,2.8vw,1.9rem);letter-spacing:-.01em}
+h3{font-size:1.16rem;font-weight:600}
+h4{font-size:1rem;font-family:"IBM Plex Sans",sans-serif;font-weight:600}
+p{margin:0 0 1.05rem;max-width:70ch}
+a{color:var(--accent);text-underline-offset:2px}
+strong{color:var(--ink);font-weight:600}
+:focus-visible{outline:2.5px solid var(--accent);outline-offset:3px;border-radius:4px}
+
+/* --- Shell -------------------------------------------------------------- */
+.shell{max-width:1180px;margin:0 auto;padding:0 28px}
+@media (min-width:1040px){
+  .shell{display:grid;grid-template-columns:216px minmax(0,1fr);gap:60px;align-items:start}
+}
+main{min-width:0;padding-bottom:96px}
+
+/* --- Masthead ----------------------------------------------------------- */
+.masthead{border-bottom:1px solid var(--line);background:var(--surface);margin-bottom:52px}
+.masthead-inner{max-width:1180px;margin:0 auto;padding:56px 28px 44px}
+.kicker{
+  font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:.72rem;font-weight:500;
+  letter-spacing:.16em;text-transform:uppercase;color:var(--accent);margin:0 0 18px;
+}
+.masthead h1{margin-bottom:16px;max-width:20ch}
+.standfirst{font-size:1.18rem;color:var(--muted);max-width:62ch;margin:0 0 26px}
+.meta{
+  display:flex;flex-wrap:wrap;gap:8px 26px;font-family:"IBM Plex Mono",monospace;
+  font-size:.76rem;color:var(--faint);letter-spacing:.03em;
+}
+.meta b{color:var(--ink-2);font-weight:500}
+
+/* --- Contents rail ------------------------------------------------------ */
+.toc{display:none}
+@media (min-width:1040px){
+  .toc{display:block;position:sticky;top:32px;padding-top:4px}
+}
+.toc p{
+  font-family:"IBM Plex Mono",monospace;font-size:.68rem;letter-spacing:.15em;
+  text-transform:uppercase;color:var(--faint);margin:0 0 14px;
+}
+.toc ol{list-style:none;margin:0;padding:0;display:grid;gap:2px;counter-reset:toc}
+.toc a{
+  display:flex;gap:10px;padding:5px 0;color:var(--muted);text-decoration:none;
+  font-size:.86rem;line-height:1.4;border-left:2px solid transparent;padding-left:12px;
+}
+.toc a:hover{color:var(--accent);border-left-color:var(--accent)}
+.toc a .n{font-family:"IBM Plex Mono",monospace;font-size:.74rem;color:var(--faint);flex:none;padding-top:1px}
+
+/* --- Sections ----------------------------------------------------------- */
+section{margin-bottom:60px;scroll-margin-top:24px}
+.sec-head{display:flex;gap:16px;align-items:baseline;margin-bottom:20px;
+  padding-bottom:14px;border-bottom:1px solid var(--line)}
+.sec-num{
+  font-family:"IBM Plex Mono",monospace;font-size:.82rem;font-weight:500;
+  color:var(--accent);flex:none;padding-top:4px;
+}
+.intro{font-size:1.06rem;color:var(--muted);max-width:66ch}
+
+/* --- Panels ------------------------------------------------------------- */
+.panel{
+  background:var(--surface);border:1px solid var(--line);border-radius:10px;
+  padding:22px 24px;margin:0 0 22px;box-shadow:var(--shadow);
+}
+.panel > :last-child{margin-bottom:0}
+.panel h4{margin:0 0 8px}
+.flag{border-left:3px solid var(--accent);background:var(--accent-wash);box-shadow:none}
+.flag.warn{border-left-color:var(--warn);background:var(--warn-wash)}
+.flag.good{border-left-color:var(--good);background:var(--good-wash)}
+.flag p{max-width:64ch}
+
+/* --- Tables ------------------------------------------------------------- */
+.scroll{overflow-x:auto;margin:0 0 24px;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+table{width:100%;border-collapse:collapse;font-size:.92rem}
+th,td{padding:11px 16px;text-align:left;border-bottom:1px solid var(--line);vertical-align:top}
+thead th{
+  background:var(--surface-2);color:var(--muted);font-weight:600;font-size:.72rem;
+  letter-spacing:.09em;text-transform:uppercase;font-family:"IBM Plex Mono",monospace;
+  white-space:nowrap;
+}
+tbody tr:last-child td{border-bottom:0}
+td code{white-space:nowrap}
+.num{font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap}
+
+/* --- Code --------------------------------------------------------------- */
+code{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:.87em;
+  background:var(--surface-2);padding:.12em .38em;border-radius:4px;color:var(--ink)}
+pre{
+  margin:0 0 22px;padding:20px 22px;overflow-x:auto;background:var(--surface);
+  border:1px solid var(--line);border-radius:10px;font-size:.83rem;line-height:1.62;
+}
+pre code{background:none;padding:0;font-size:inherit;color:var(--ink-2);white-space:pre}
+.c-key{color:var(--accent);font-weight:500}
+.c-com{color:var(--faint);font-style:italic}
+.c-str{color:var(--good)}
+
+/* --- Phases ------------------------------------------------------------- */
+.phases{display:grid;gap:14px;margin-bottom:24px}
+.phase{
+  background:var(--surface);border:1px solid var(--line);border-radius:10px;
+  padding:20px 22px;display:grid;grid-template-columns:auto 1fr;gap:18px;align-items:start;
+}
+.phase-n{
+  width:30px;height:30px;border-radius:8px;display:grid;place-items:center;flex:none;
+  background:var(--accent);color:#fff;font-family:"IBM Plex Mono",monospace;
+  font-size:.82rem;font-weight:600;
+}
+:root[data-theme="dark"] .phase-n,
+:root:not([data-theme="light"]) .phase-n{color:#17162b}
+@media (prefers-color-scheme:light){:root:not([data-theme="dark"]) .phase-n{color:#fff}}
+.phase h3{margin-bottom:4px}
+.phase .when{
+  font-family:"IBM Plex Mono",monospace;font-size:.72rem;color:var(--faint);
+  letter-spacing:.05em;margin:0 0 10px;
+}
+.phase p{margin:0 0 8px;font-size:.95rem}
+.phase p:last-child{margin-bottom:0}
+.done{
+  font-size:.88rem;color:var(--muted);border-top:1px dashed var(--line-2);
+  padding-top:10px;margin-top:12px;
+}
+.done b{font-family:"IBM Plex Mono",monospace;font-size:.72rem;letter-spacing:.09em;
+  text-transform:uppercase;color:var(--faint);display:block;margin-bottom:3px;font-weight:500}
+
+/* --- Lists -------------------------------------------------------------- */
+ul.plain{list-style:none;margin:0 0 20px;padding:0;display:grid;gap:11px;max-width:70ch}
+ul.plain li{display:grid;grid-template-columns:auto 1fr;gap:12px;align-items:start}
+ul.plain .b{
+  width:6px;height:6px;border-radius:50%;background:var(--accent);margin-top:.62em;flex:none;
+}
+ol.steps{margin:0 0 20px;padding-left:1.3em;max-width:70ch}
+ol.steps li{margin-bottom:9px;padding-left:.2em}
+
+/* --- Diagram ------------------------------------------------------------ */
+figure{margin:0 0 24px}
+figure svg{display:block;width:100%;height:auto;background:var(--surface);
+  border:1px solid var(--line);border-radius:10px}
+figcaption{font-size:.85rem;color:var(--faint);margin-top:10px;max-width:66ch}
+
+/* --- Footer ------------------------------------------------------------- */
+.endnote{border-top:1px solid var(--line);padding-top:24px;margin-top:56px;
+  font-size:.88rem;color:var(--faint);max-width:70ch}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+
+<header class="masthead">
+  <div class="masthead-inner">
+    <p class="kicker">Build plan &middot; revision 3 &middot; agreed</p>
+    <h1>Accounts, and moving pupil data to the UK</h1>
+    <p class="standfirst">
+      How EveryPupil goes from a tool that keeps everything in one teacher&rsquo;s
+      browser to one a whole trust can log into &mdash; the schema, the security
+      model, the compliance work, and the order to build it in.
+    </p>
+    <div class="meta">
+      <span><b>Written</b> 23 August 2026</span>
+      <span><b>Revised</b> data model &amp; pricing, after review</span>
+      <span><b>Status</b> agreed &mdash; waiting on the Supabase project</span>
+      <span><b>Est. effort</b> 4&ndash;6 weeks part time</span>
+      <span><b>Recurring cost</b> &pound;0&ndash;20/month to start</span>
+    </div>
+  </div>
+</header>
+
+<div class="shell">
+
+<nav class="toc" aria-label="Contents">
+  <p>Contents</p>
+  <ol>
+    <li><a href="#s1"><span class="n">01</span> What changes</a></li>
+    <li><a href="#s2"><span class="n">02</span> The stack</a></li>
+    <li><a href="#s3"><span class="n">03</span> How a request flows</a></li>
+    <li><a href="#s4"><span class="n">04</span> Data model</a></li>
+    <li><a href="#s5"><span class="n">05</span> Keeping schools apart</a></li>
+    <li><a href="#s6"><span class="n">06</span> Signing in</a></li>
+    <li><a href="#s7"><span class="n">07</span> Existing work</a></li>
+    <li><a href="#s8"><span class="n">08</span> Plans and limits</a></li>
+    <li><a href="#s9"><span class="n">09</span> Legal obligations</a></li>
+    <li><a href="#s10"><span class="n">10</span> Build order</a></li>
+    <li><a href="#s11"><span class="n">11</span> What worries me</a></li>
+    <li><a href="#s12"><span class="n">12</span> Decided</a></li>
+  </ol>
+</nav>
+
+<main>
+
+<!-- ========================================================== 01 -->
+<section id="s1">
+  <div class="sec-head"><span class="sec-num">01</span><h2>What actually changes</h2></div>
+
+  <p class="intro">
+    Everything a teacher can do today stays exactly as it is. What changes is
+    where the data lives and who is allowed to reach it.
+  </p>
+
+  <div class="scroll">
+    <table>
+      <thead><tr><th>Concern</th><th>Today</th><th>After</th></tr></thead>
+      <tbody>
+        <tr><td>Where marks live</td><td>The browser that typed them</td><td>Postgres in London</td></tr>
+        <tr><td>Using two devices</td><td>Impossible &mdash; separate copies</td><td>Log in anywhere</td></tr>
+        <tr><td>Clearing site data</td><td>Loses everything, silently</td><td>Loses nothing</td></tr>
+        <tr><td>Sharing with a colleague</td><td>Export and email a file</td><td>Same school, same assessment</td></tr>
+        <tr><td>Who may send email</td><td>Anyone holding the shared key</td><td>A signed-in teacher, for their own class</td></tr>
+        <tr><td>Charging for it</td><td>No way to</td><td>Plan on the organisation</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="panel flag warn">
+    <h4>The shared key is deleted, not moved</h4>
+    <p>
+      <code>APP_SHARED_KEY</code> exists because there was no other way to stop
+      strangers using your email endpoint. It was always a stopgap: every
+      customer would hold the same secret, and any of them could read it out of
+      the browser and send email as you. Once requests carry a session, the API
+      authorises the person, and the key comes out entirely.
+    </p>
+  </div>
+</section>
+
+<!-- ========================================================== 02 -->
+<section id="s2">
+  <div class="sec-head"><span class="sec-num">02</span><h2>The stack, and why each piece</h2></div>
+
+  <div class="scroll">
+    <table>
+      <thead><tr><th>Piece</th><th>Choice</th><th>Where</th><th class="num">Cost</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><b>Database &amp; auth</b></td>
+          <td>Supabase (Postgres)</td>
+          <td>London <code>eu-west-2</code></td>
+          <td class="num">&pound;0 &rarr; ~&pound;20/mo</td>
+        </tr>
+        <tr>
+          <td><b>API &amp; app hosting</b></td>
+          <td>Vercel</td>
+          <td>London <code>lhr1</code></td>
+          <td class="num">&pound;0 &rarr; ~&pound;16/mo</td>
+        </tr>
+        <tr>
+          <td><b>Email</b></td>
+          <td>Resend</td>
+          <td>EU region available</td>
+          <td class="num">&pound;0 &rarr; ~&pound;16/mo</td>
+        </tr>
+        <tr>
+          <td><b>Marketing site</b></td>
+          <td>Cloudflare Pages</td>
+          <td>Edge</td>
+          <td class="num">&pound;0</td>
+        </tr>
+        <tr>
+          <td><b>Payments</b></td>
+          <td>Stripe, later</td>
+          <td>UK entity</td>
+          <td class="num">1.5% + 20p</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p>
+    Supabase is the load-bearing choice. It is Postgres &mdash; not a proprietary
+    document store &mdash; so if you ever outgrow it, the data comes with you as
+    ordinary SQL. It ships authentication, and critically it enforces access
+    rules <em>in the database</em> rather than in application code. More on why
+    that matters in <a href="#s5">section 05</a>.
+  </p>
+
+  <div class="panel flag good">
+    <h4>Nothing leaves the UK</h4>
+    <p>
+      Supabase offers a London region and your Vercel functions already run in
+      <code>lhr1</code>. When a DPO asks where pupil data is stored and
+      processed, the answer is London for both, with no transfer mechanism to
+      argue about. That is a stronger answer than most edtech can give, and it
+      is worth saying on the pricing page.
+    </p>
+  </div>
+
+  <h3>The app moves off GitHub Pages</h3>
+  <p>
+    Not for the sake of it. Serving the app from Vercel puts it on the same
+    origin as the API, which means session cookies can be <code>httpOnly</code>
+    &mdash; unreadable by JavaScript, so a cross-site scripting bug cannot steal
+    a login. Tokens in <code>localStorage</code>, the alternative, can be. It
+    also retires CORS configuration entirely, which has already cost you an
+    evening.
+  </p>
+</section>
+
+<!-- ========================================================== 03 -->
+<section id="s3">
+  <div class="sec-head"><span class="sec-num">03</span><h2>How a request flows</h2></div>
+
+  <p class="intro">
+    Worth being concrete about, because the security argument rests on where the
+    checks happen rather than how many there are.
+  </p>
+
+  <figure>
+    <svg viewBox="0 0 880 260" role="img" aria-label="A teacher's browser sends a request with a session cookie to the Vercel API in London, which verifies the session with Supabase Auth and queries Postgres. Row Level Security filters every query to the teacher's own school before any row is returned.">
+      <defs>
+        <marker id="ar" markerWidth="9" markerHeight="9" refX="7" refY="3.2" orient="auto">
+          <path d="M0,0 L7,3.2 L0,6.4 z" fill="currentColor"/>
+        </marker>
+      </defs>
+      <g fill="none" stroke="currentColor" color="var(--line-2)" stroke-width="1.5">
+        <line x1="181" y1="76" x2="253" y2="76" marker-end="url(#ar)"/>
+        <line x1="437" y1="76" x2="509" y2="76" marker-end="url(#ar)"/>
+        <line x1="600" y1="112" x2="600" y2="168" marker-end="url(#ar)"/>
+      </g>
+      <g font-family="IBM Plex Sans, sans-serif">
+        <g>
+          <rect x="20" y="46" width="161" height="60" rx="9" fill="var(--surface-2)" stroke="var(--line-2)"/>
+          <text x="100" y="72" text-anchor="middle" font-size="14" font-weight="600" fill="var(--ink)">Teacher&rsquo;s browser</text>
+          <text x="100" y="91" text-anchor="middle" font-size="11.5" fill="var(--muted)">app.everypupil.com</text>
+        </g>
+        <g>
+          <rect x="253" y="46" width="184" height="60" rx="9" fill="var(--surface-2)" stroke="var(--line-2)"/>
+          <text x="345" y="72" text-anchor="middle" font-size="14" font-weight="600" fill="var(--ink)">API &mdash; Vercel</text>
+          <text x="345" y="91" text-anchor="middle" font-size="11.5" fill="var(--muted)">London, lhr1</text>
+        </g>
+        <g>
+          <rect x="509" y="46" width="182" height="60" rx="9" fill="var(--accent-wash)" stroke="var(--accent)"/>
+          <text x="600" y="72" text-anchor="middle" font-size="14" font-weight="600" fill="var(--ink)">Supabase Auth</text>
+          <text x="600" y="91" text-anchor="middle" font-size="11.5" fill="var(--muted)">who is this?</text>
+        </g>
+        <g>
+          <rect x="509" y="168" width="182" height="66" rx="9" fill="var(--accent-wash)" stroke="var(--accent)"/>
+          <text x="600" y="194" text-anchor="middle" font-size="14" font-weight="600" fill="var(--ink)">Postgres + RLS</text>
+          <text x="600" y="213" text-anchor="middle" font-size="11.5" fill="var(--muted)">London, eu-west-2</text>
+        </g>
+        <text x="217" y="66" text-anchor="middle" font-size="10.5" font-family="IBM Plex Mono, monospace" fill="var(--faint)">cookie</text>
+        <text x="473" y="66" text-anchor="middle" font-size="10.5" font-family="IBM Plex Mono, monospace" fill="var(--faint)">verify</text>
+        <text x="612" y="146" font-size="10.5" font-family="IBM Plex Mono, monospace" fill="var(--faint)">query as that user</text>
+        <g>
+          <rect x="20" y="168" width="417" height="66" rx="9" fill="none" stroke="var(--line-2)" stroke-dasharray="4 4"/>
+          <text x="40" y="194" font-size="12.5" font-weight="600" fill="var(--ink)">Every row is filtered to the teacher&rsquo;s own school</text>
+          <text x="40" y="214" font-size="11.5" fill="var(--muted)">by the database, before the API sees it</text>
+        </g>
+      </g>
+    </svg>
+    <figcaption>
+      The important line is the dashed one. Filtering happens inside Postgres,
+      not in the API &mdash; so a forgotten <code>where</code> clause in my code
+      cannot leak another school&rsquo;s marks.
+    </figcaption>
+  </figure>
+</section>
+
+<!-- ========================================================== 04 -->
+<section id="s4">
+  <div class="sec-head"><span class="sec-num">04</span><h2>Data model</h2></div>
+
+  <p class="intro">
+    Two changes of substance from today&rsquo;s shape: everything hangs off an
+    organisation, and pupils belong to the school rather than to one assessment.
+  </p>
+
+  <div class="panel flag warn">
+    <h4>Corrected: there is no classes table</h4>
+    <p>
+      An earlier draft of this plan gave each assessment a
+      <code>class_id</code>. That was wrong, for two reasons that only somebody
+      who has taught would catch.
+    </p>
+    <p>
+      <b>An assessment is a script, not a class.</b> One teaching group routinely
+      splits across tiers &mdash; most of 10B sitting Combined Biology
+      Foundation Paper 1 while four higher attainers sit the Higher paper. Those
+      are two assessments drawing from one group, which a class-owned assessment
+      cannot express.
+    </p>
+    <p>
+      <b>Sets change through the year.</b> A structural pupil-to-class link goes
+      stale every time somebody moves group, and stale structure quietly
+      corrupts everything downstream of it.
+    </p>
+  </div>
+
+  <p>
+    So: <b>pupils belong to the organisation</b>. Each assessment has an
+    <em>entry list</em> &mdash; who actually sat this paper &mdash; drawn from
+    the school&rsquo;s roster. Setting up an assessment offers three ways to
+    fill it: copy the entry list from a previous assessment and untick whoever
+    is not sitting this one, import a CSV, or add by hand.
+  </p>
+
+  <p>
+    That handles the tier split exactly as it happens in a department: copy last
+    term&rsquo;s Biology entry, untick the four doing Higher, done. No structure
+    to maintain, nothing to go stale, and nobody has to keep a class list in
+    step with reality.
+  </p>
+
+<pre><code><span class="c-com">-- Every row belongs to an organisation. There is no path to another's.</span>
+<span class="c-key">create table</span> organisations (
+  id         uuid <span class="c-key">primary key default</span> gen_random_uuid(),
+  name       text <span class="c-key">not null</span>,                          <span class="c-com">-- "Northgate Academy"</span>
+  kind       text <span class="c-key">not null check</span> (kind <span class="c-key">in</span> (<span class="c-str">'school'</span>,<span class="c-str">'trust'</span>,<span class="c-str">'individual'</span>)),
+  trust_id   uuid <span class="c-key">references</span> organisations(id),        <span class="c-com">-- a school inside a MAT</span>
+  plan       text <span class="c-key">not null default</span> <span class="c-str">'free'</span>,
+  created_at timestamptz <span class="c-key">not null default</span> now()
+);
+
+<span class="c-com">-- Which teachers belong to which school, and what they may do.</span>
+<span class="c-key">create table</span> memberships (
+  user_id uuid <span class="c-key">not null references</span> auth.users(id) <span class="c-key">on delete cascade</span>,
+  org_id  uuid <span class="c-key">not null references</span> organisations(id) <span class="c-key">on delete cascade</span>,
+  role    text <span class="c-key">not null check</span> (role <span class="c-key">in</span> (<span class="c-str">'owner'</span>,<span class="c-str">'admin'</span>,<span class="c-str">'teacher'</span>)),
+  <span class="c-key">primary key</span> (user_id, org_id)
+);
+
+<span class="c-com">-- Pupils belong to the school. Not to a class, not to an assessment.</span>
+<span class="c-com">-- Sets change and tiers cut across them; the pupil is still the same pupil.</span>
+<span class="c-key">create table</span> pupils (
+  id           uuid <span class="c-key">primary key default</span> gen_random_uuid(),
+  org_id       uuid <span class="c-key">not null references</span> organisations(id) <span class="c-key">on delete cascade</span>,
+  name         text <span class="c-key">not null</span>,
+  email        text,
+  parent_email text,
+  external_id  text,                            <span class="c-com">-- optional MIS / UPN reference</span>
+  group_label  text,                            <span class="c-com">-- "10B/Sc2" — a label, not a structure</span>
+  email_text   jsonb <span class="c-key">not null default</span> <span class="c-str">'{}'</span>,      <span class="c-com">-- per-pupil wording</span>
+  created_at   timestamptz <span class="c-key">not null default</span> now()
+);
+
+<span class="c-com">-- Identity within a school. Either key alone is enough to recognise</span>
+<span class="c-com">-- somebody on a re-import; names are never used for matching.</span>
+<span class="c-key">create unique index</span> pupils_org_email <span class="c-key">on</span> pupils (org_id, lower(email))
+  <span class="c-key">where</span> email <span class="c-key">is not null</span>;
+<span class="c-key">create unique index</span> pupils_org_extid <span class="c-key">on</span> pupils (org_id, external_id)
+  <span class="c-key">where</span> external_id <span class="c-key">is not null</span>;
+
+<span class="c-com">-- Who actually sat this paper. The Foundation entry and the Higher entry</span>
+<span class="c-com">-- draw different pupils from the same teaching group.</span>
+<span class="c-key">create table</span> assessment_pupils (
+  assessment_id uuid <span class="c-key">not null references</span> assessments(id) <span class="c-key">on delete cascade</span>,
+  pupil_id      uuid <span class="c-key">not null references</span> pupils(id) <span class="c-key">on delete cascade</span>,
+  position      int <span class="c-key">not null</span>,
+  <span class="c-key">primary key</span> (assessment_id, pupil_id)
+);
+
+<span class="c-key">create table</span> assessments (
+  id               uuid <span class="c-key">primary key default</span> gen_random_uuid(),
+  org_id           uuid <span class="c-key">not null references</span> organisations(id) <span class="c-key">on delete cascade</span>,
+  owner_id         uuid <span class="c-key">not null references</span> auth.users(id),
+  name             text <span class="c-key">not null</span>,
+  subject          text,
+  paper_type       text <span class="c-key">not null default</span> <span class="c-str">'higher'</span>,
+  blank_policy     text <span class="c-key">not null default</span> <span class="c-str">'incomplete'</span>,
+  grade_boundaries jsonb <span class="c-key">not null default</span> <span class="c-str">'[]'</span>,
+  email_text       jsonb <span class="c-key">not null default</span> <span class="c-str">'{}'</span>,
+  settings         jsonb <span class="c-key">not null default</span> <span class="c-str">'{}'</span>,      <span class="c-com">-- lock, chart choices</span>
+  locked_pin_hash  text,
+  updated_at       timestamptz <span class="c-key">not null default</span> now()
+);
+
+<span class="c-key">create table</span> questions (
+  id            uuid <span class="c-key">primary key default</span> gen_random_uuid(),
+  assessment_id uuid <span class="c-key">not null references</span> assessments(id) <span class="c-key">on delete cascade</span>,
+  position      int  <span class="c-key">not null</span>,
+  number        text <span class="c-key">not null</span>,                        <span class="c-com">-- "01.1", free text</span>
+  max_marks     numeric <span class="c-key">not null check</span> (max_marks &gt; 0),
+  topic         text,
+  reteach_url   text
+);
+
+<span class="c-com">-- NULL mark means NOT MARKED. It is not zero, and never becomes zero</span>
+<span class="c-com">-- by accident. The whole app depends on this distinction holding.</span>
+<span class="c-com">--</span>
+<span class="c-com">-- A mark hangs off the ENTRY, not the pupil, so taking somebody off an</span>
+<span class="c-com">-- assessment takes their marks for it with them — and leaves every other</span>
+<span class="c-com">-- assessment they sat untouched.</span>
+<span class="c-key">create table</span> marks (
+  assessment_id uuid <span class="c-key">not null</span>,
+  pupil_id      uuid <span class="c-key">not null</span>,
+  question_id   uuid <span class="c-key">not null references</span> questions(id) <span class="c-key">on delete cascade</span>,
+  mark          numeric,
+  <span class="c-key">primary key</span> (assessment_id, pupil_id, question_id),
+  <span class="c-key">foreign key</span> (assessment_id, pupil_id)
+    <span class="c-key">references</span> assessment_pupils(assessment_id, pupil_id) <span class="c-key">on delete cascade</span>
+);
+
+<span class="c-com">-- An audit trail. Schools will ask what was sent, to whom, by whom.</span>
+<span class="c-key">create table</span> send_log (
+  id            uuid <span class="c-key">primary key default</span> gen_random_uuid(),
+  assessment_id uuid <span class="c-key">not null references</span> assessments(id) <span class="c-key">on delete cascade</span>,
+  sent_by       uuid <span class="c-key">references</span> auth.users(id),
+  sent_at       timestamptz <span class="c-key">not null default</span> now(),
+  recipients    int <span class="c-key">not null</span>,
+  succeeded     int <span class="c-key">not null</span>,
+  failed        int <span class="c-key">not null</span>
+);</code></pre>
+
+  <p>
+    The <code>jsonb</code> columns are deliberate. Grade boundaries, chart
+    preferences and email wording are read and written whole, never queried
+    across schools, and their shape is still moving. Making each a table would
+    buy nothing and cost a migration every time the app changes.
+  </p>
+
+  <h3>Recognising the same pupil twice</h3>
+
+  <p>
+    This is the part that decides whether a school roster is a feature or a
+    mess. When a CSV is imported in March, the app has to know that
+    &ldquo;A Stone&rdquo; is the Amelia Stone already on the roster from
+    September &mdash; otherwise the school accumulates three of her and
+    progress over time becomes impossible.
+  </p>
+
+  <div class="scroll">
+    <table>
+      <thead><tr><th>Match on</th><th>Reliability</th><th>Use it?</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><b>MIS / UPN reference</b></td>
+          <td>Exact. Survives name changes, set changes, everything</td>
+          <td>Yes, when the export has one</td>
+        </tr>
+        <tr>
+          <td><b>School email</b></td>
+          <td>Unique per pupil in every school system worth the name</td>
+          <td>Yes &mdash; the default</td>
+        </tr>
+        <tr>
+          <td><b>Name</b></td>
+          <td>Two J Smiths in a year group. Names change</td>
+          <td>Never, on its own</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p>
+    So the CSV template gains one optional column, <code>Pupil ID</code>, which
+    data staff can fill from the MIS export. When it is there, matching is
+    exact. When it is not, school email does the job. When neither is present
+    &mdash; a pupil with no email address &mdash; the import creates a new
+    record and says so, rather than guessing from a name and silently merging
+    two children.
+  </p>
+
+  <div class="panel flag">
+    <h4>Nothing new is asked of anyone</h4>
+    <p>
+      You already collect school email, and you said data staff can pull
+      whatever is needed. <code>Pupil ID</code> is optional, so a teacher
+      exporting a quick list from memory is not blocked, while a department
+      whose office runs the export properly gets exact matching for free.
+    </p>
+  </div>
+
+  <p>
+    The import screen shows what it decided before anything is written:
+    <em>62 pupils recognised, 3 new, 1 needs checking</em>, with the ambiguous
+    one offered for a human decision. Same principle as the rest of the app
+    &mdash; show the working, then ask.
+  </p>
+</section>
+
+<!-- ========================================================== 05 -->
+<section id="s5">
+  <div class="sec-head"><span class="sec-num">05</span><h2>Keeping one school out of another&rsquo;s data</h2></div>
+
+  <p class="intro">
+    This is the part that has to be right. Everything else is inconvenience if
+    it breaks; this is a notifiable data breach involving children.
+  </p>
+
+  <p>
+    The usual approach is for the application to add <code>where org_id = ...</code>
+    to every query. It works until the day somebody forgets one &mdash; and that
+    somebody is me, on a Friday, adding a feature. Postgres can enforce it
+    instead, underneath the application, where forgetting is not possible.
+  </p>
+
+<pre><code><span class="c-key">alter table</span> assessments <span class="c-key">enable row level security</span>;
+
+<span class="c-com">-- A teacher sees an assessment only if they belong to its organisation.</span>
+<span class="c-key">create policy</span> <span class="c-str">"read own org"</span> <span class="c-key">on</span> assessments <span class="c-key">for select</span>
+  <span class="c-key">using</span> (org_id <span class="c-key">in</span> (
+    <span class="c-key">select</span> org_id <span class="c-key">from</span> memberships <span class="c-key">where</span> user_id = auth.uid()
+  ));
+
+<span class="c-com">-- Child tables inherit the rule through their parent.</span>
+<span class="c-key">alter table</span> marks <span class="c-key">enable row level security</span>;
+
+<span class="c-key">create policy</span> <span class="c-str">"read own org"</span> <span class="c-key">on</span> marks <span class="c-key">for select</span>
+  <span class="c-key">using</span> (question_id <span class="c-key">in</span> (
+    <span class="c-key">select</span> q.id <span class="c-key">from</span> questions q
+    <span class="c-key">join</span> assessments a <span class="c-key">on</span> a.id = q.assessment_id
+    <span class="c-key">where</span> a.org_id <span class="c-key">in</span> (
+      <span class="c-key">select</span> org_id <span class="c-key">from</span> memberships <span class="c-key">where</span> user_id = auth.uid()
+    )
+  ));</code></pre>
+
+  <p>
+    With those in place, <code>select * from marks</code> run by a signed-in
+    teacher returns their school&rsquo;s marks and nothing else &mdash; even
+    though the query asked for everything. A bug in my code becomes an empty
+    result rather than a breach.
+  </p>
+
+  <p>
+    Moving pupils to the organisation actually simplifies this: the
+    <code>pupils</code> table carries <code>org_id</code> directly, so its
+    policy is a single membership check with no joins at all.
+  </p>
+
+  <div class="panel flag warn">
+    <h4>Two ways to defeat this, both avoidable</h4>
+    <p>
+      The <code>service_role</code> key bypasses RLS entirely, by design. It must
+      live only in Vercel&rsquo;s environment variables, never in anything sent
+      to a browser, and be used only where a request genuinely acts for the
+      system rather than a person.
+    </p>
+    <p>
+      And RLS is off until switched on per table. A new table added later with
+      no policy is readable by anyone with an account. That belongs on a
+      checklist, not in my memory &mdash; so the test suite will assert that
+      every table has RLS enabled, and fail the build if one does not.
+    </p>
+  </div>
+</section>
+
+<!-- ========================================================== 06 -->
+<section id="s6">
+  <div class="sec-head"><span class="sec-num">06</span><h2>Signing in</h2></div>
+
+  <p>
+    A teacher types their school email. They get a six-digit code, or a link,
+    and they are in. No password to choose, forget, reuse from another site, or
+    have leaked in somebody else&rsquo;s breach &mdash; and it proves they
+    control a school address, which is the thing you actually want to know.
+  </p>
+
+  <ol class="steps">
+    <li>Teacher enters <code>a.okafor@school.sch.uk</code>.</li>
+    <li>Supabase emails a one-time code, valid for a few minutes.</li>
+    <li>They enter it; the API sets an <code>httpOnly</code>, <code>Secure</code>, <code>SameSite=Lax</code> session cookie.</li>
+    <li>Every later request carries it automatically. JavaScript cannot read it.</li>
+    <li>First sign-in only: they name their school, which creates the organisation and makes them its owner.</li>
+  </ol>
+
+  <p>
+    Colleagues join by invitation from an owner or admin, which is also how a
+    school&rsquo;s plan covers them. Nobody joins a school by guessing its name.
+  </p>
+
+  <p>
+    One exception, because the alternative is colleagues unknowingly duplicating
+    each other. If somebody signs up on an email domain that already has an
+    organisation, they are told so &mdash; <em>&ldquo;Northgate Academy already
+    uses EveryPupil&rdquo;</em> &mdash; and offered a button that sends a join
+    request to an admin. The admin still decides. Nothing about the school is
+    revealed beyond the fact that it has an account.
+  </p>
+
+  <div class="panel">
+    <h4>Microsoft SSO, when a trust asks</h4>
+    <p>
+      Schools run on Microsoft 365 or Google Workspace, and &ldquo;sign in with
+      your school account&rdquo; converts far better than any email flow. It is
+      also more setup, and needs IT to consent to an app registration. The
+      database does not care which way somebody authenticated, so adding it
+      later changes the sign-in screen and nothing else. Worth doing when the
+      first trust asks, not before.
+    </p>
+  </div>
+</section>
+
+<!-- ========================================================== 07 -->
+<section id="s7">
+  <div class="sec-head"><span class="sec-num">07</span><h2>What happens to work already done</h2></div>
+
+  <p>
+    Your GCSE Science assessment and anything else in a browser today does not
+    have to be re-entered. <code>js/storage.js</code> was written behind a
+    repository interface for exactly this &mdash; <code>list</code>,
+    <code>get</code>, <code>save</code>, <code>remove</code> &mdash; so a
+    Supabase implementation slots in beside the localStorage one.
+  </p>
+
+  <p>
+    On first sign-in the app finds any local assessments and offers to upload
+    them. The local copy is left alone until the upload is confirmed, so a
+    failed import cannot lose anything. The existing JSON export is the fallback
+    if a browser has already been cleared.
+  </p>
+</section>
+
+<!-- ========================================================== 08 -->
+<section id="s8">
+  <div class="sec-head"><span class="sec-num">08</span><h2>Plans, limits and payment</h2></div>
+
+  <p>
+    The plan lives on the organisation. Limits are checked in the database and
+    in the API &mdash; never only in the browser, where anyone can edit them away.
+  </p>
+
+  <div class="scroll">
+    <table>
+      <thead><tr><th>Plan</th><th class="num">Teachers</th><th class="num">Pupils</th><th class="num">Emails / mo</th><th>Working together</th></tr></thead>
+      <tbody>
+        <tr><td><b>Free</b></td><td class="num">1</td><td class="num">35</td><td class="num">200</td><td>None &mdash; solo by design</td></tr>
+        <tr><td><b>Department</b></td><td class="num">15</td><td class="num">&infin;</td><td class="num">3,000</td><td>Shared papers, department results</td></tr>
+        <tr><td><b>Whole school</b></td><td class="num">&infin;</td><td class="num">&infin;</td><td class="num">20,000</td><td>&plus; school view, email branding</td></tr>
+        <tr><td><b>Trust</b></td><td class="num">&infin;</td><td class="num">&infin;</td><td>By agreement</td><td>&plus; trust-wide view</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="panel flag">
+    <h4>The paywall is collaboration, not volume</h4>
+    <p>
+      Any per-account allowance can be farmed by making more accounts: eight
+      teachers, eight free accounts, 280 pupils between them, nobody pays.
+      Tightening the cap does not fix that &mdash; it only makes the free tier
+      useless to the solo triallist it exists for.
+    </p>
+    <p>
+      What a department actually wants is one person setting up the Biology
+      paper and everyone else using it, results in one place, one invoice, one
+      admin, a DPA. Eight disconnected free accounts cannot do any of that at
+      any size. So the free tier is deliberately <b>solo</b>: no invitations, no
+      shared papers, no school view. Farming it costs a department every feature
+      that made them want it.
+    </p>
+    <p>
+      The domain hint in <a href="#s6">section 06</a> closes most of what is
+      left, and improves the product either way.
+    </p>
+  </div>
+
+  <p>
+    Email caps exist to protect your sending reputation as much as your margin:
+    one misconfigured trial account sending thousands of bounces would damage
+    deliverability for every customer.
+  </p>
+
+  <p>
+    Stripe comes last, and only once schools are actually asking to pay. It is
+    a subscription per organisation, a webhook that sets <code>plan</code>, and
+    an invoice route for the many schools that cannot pay by card. Building it
+    before anyone wants to buy is the classic way to spend three weeks on
+    nothing.
+  </p>
+</section>
+
+<!-- ========================================================== 09 -->
+<section id="s9">
+  <div class="sec-head"><span class="sec-num">09</span><h2>What the law and the buyers require</h2></div>
+
+  <p class="intro">
+    None of this is code, all of it blocks a sale, and most of it is cheap if
+    started early and expensive if left until a trust asks.
+  </p>
+
+  <div class="scroll">
+    <table>
+      <thead><tr><th>Obligation</th><th>Why</th><th>When</th><th class="num">Cost</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><b>ICO registration</b></td>
+          <td>Legally required to process personal data as a business</td>
+          <td>Before the first real school</td>
+          <td class="num">~&pound;40&ndash;60/yr</td>
+        </tr>
+        <tr>
+          <td><b>Data Processing Agreement</b></td>
+          <td>The school is the controller, you are the processor. They cannot lawfully use you without one</td>
+          <td>Before the first real school</td>
+          <td class="num">&pound;0&ndash;500</td>
+        </tr>
+        <tr>
+          <td><b>Sub-processor list</b></td>
+          <td>Supabase, Vercel, Resend, Stripe &mdash; named, with what each handles and where</td>
+          <td>With the DPA</td>
+          <td class="num">&pound;0</td>
+        </tr>
+        <tr>
+          <td><b>Privacy notice</b></td>
+          <td>The <code>/privacy/</code> page the site already links to</td>
+          <td>Before launch</td>
+          <td class="num">&pound;0</td>
+        </tr>
+        <tr>
+          <td><b>Retention &amp; deletion</b></td>
+          <td>30 days on cancellation, and pupils auto-removed after 24 months idle. Both must be real processes, not intentions</td>
+          <td>With accounts</td>
+          <td class="num">&pound;0</td>
+        </tr>
+        <tr>
+          <td><b>DPIA support pack</b></td>
+          <td>The school writes it; giving them the technical answers wins deals</td>
+          <td>First trust conversation</td>
+          <td class="num">&pound;0</td>
+        </tr>
+        <tr>
+          <td><b>Cyber Essentials</b></td>
+          <td>Many MATs will not buy without it</td>
+          <td>Before selling to trusts</td>
+          <td class="num">from ~&pound;300</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="panel flag warn">
+    <h4>Two things to be careful about saying</h4>
+    <p>
+      There is no such thing as being &ldquo;GDPR certified&rdquo;. Claiming it
+      marks you out as someone who has not done the work. Describe what is
+      actually true &mdash; data in London, these sub-processors, this retention
+      period, a DPA on request &mdash; which is more persuasive anyway.
+    </p>
+    <p>
+      And the pricing page currently promises UK hosting and 30-day deletion.
+      Both become true when this plan ships. Until then the data-protection
+      section says so plainly, and it needs updating the day it changes &mdash;
+      in whichever direction.
+    </p>
+  </div>
+
+  <p>
+    Worth registering with the ICO early regardless: it is cheap, it takes ten
+    minutes, and it is the first thing a school business manager checks.
+  </p>
+</section>
+
+<!-- ========================================================== 10 -->
+<section id="s10">
+  <div class="sec-head"><span class="sec-num">10</span><h2>Build order</h2></div>
+
+  <p class="intro">
+    Each phase leaves the app working. Nothing here is a big-bang rewrite, and
+    you can stop after any phase and still have something usable.
+  </p>
+
+  <div class="phases">
+
+    <div class="phase">
+      <div class="phase-n">1</div>
+      <div>
+        <h3>Foundations</h3>
+        <p class="when">~1 week &middot; nothing visible changes</p>
+        <p>
+          Create the Supabase project in London. Write the schema and the RLS
+          policies. Move the app from GitHub Pages to Vercel so it shares an
+          origin with the API. Add the test that fails the build if any table
+          has RLS switched off.
+        </p>
+        <div class="done"><b>Done when</b> the app works exactly as now, served from Vercel, with an empty database behind it and every table locked down.</div>
+      </div>
+    </div>
+
+    <div class="phase">
+      <div class="phase-n">2</div>
+      <div>
+        <h3>Sign in</h3>
+        <p class="when">~1 week &middot; first visible change</p>
+        <p>
+          Email-code sign-in, the session cookie, creating an organisation on
+          first use, and inviting colleagues. The app still reads and writes
+          local storage &mdash; this phase only establishes who someone is.
+        </p>
+        <div class="done"><b>Done when</b> you can sign in on your laptop and your phone and see the same account, even though the data is still local to each.</div>
+      </div>
+    </div>
+
+    <div class="phase">
+      <div class="phase-n">3</div>
+      <div>
+        <h3>Data moves to the database</h3>
+        <p class="when">~1&ndash;2 weeks &middot; the real work</p>
+        <p>
+          The Supabase repository behind the existing storage interface, the
+          school pupil roster with entry lists and copy-from-previous, the
+          matching rules on import, and the one-time offer to upload anything
+          already in the browser. Delete the shared key and switch the email API
+          to authorise by session.
+        </p>
+        <div class="done"><b>Done when</b> marks entered on one device appear on another, and the sample GCSE assessment survives a round trip intact.</div>
+      </div>
+    </div>
+
+    <div class="phase">
+      <div class="phase-n">4</div>
+      <div>
+        <h3>Plans, limits and the paperwork</h3>
+        <p class="when">~1 week</p>
+        <p>
+          Enforce the free-tier limits. Build account deletion, export, and the
+          scheduled job that removes pupils idle for 24 months, so the promises
+          on the pricing page and in the privacy notice are real. Write the
+          privacy notice, the DPA and the sub-processor list. Register with the
+          ICO.
+        </p>
+        <div class="done"><b>Done when</b> a school could trial it and their DPO could be answered without you writing anything new.</div>
+      </div>
+    </div>
+
+    <div class="phase">
+      <div class="phase-n">5</div>
+      <div>
+        <h3>Taking money</h3>
+        <p class="when">~1 week &middot; only when someone wants to pay</p>
+        <p>
+          Stripe subscriptions, the webhook that sets the plan, and an invoice
+          route for schools that cannot use a card. Deliberately last.
+        </p>
+        <div class="done"><b>Done when</b> a school can buy without you touching the database by hand.</div>
+      </div>
+    </div>
+
+  </div>
+
+  <p>
+    Phases 1 to 3 are the ones that matter. After phase 3 you have a product a
+    school can genuinely trial; phases 4 and 5 turn a trial into a customer.
+  </p>
+</section>
+
+<!-- ========================================================== 11 -->
+<section id="s11">
+  <div class="sec-head"><span class="sec-num">11</span><h2>What worries me</h2></div>
+
+  <ul class="plain">
+    <li><span class="b"></span><div><b>RLS on a table I add later.</b> The likeliest route to a real breach, because it fails silently and looks fine. Hence the build-failing test, not a note in a document.</div></li>
+    <li><span class="b"></span><div><b>Losing a teacher&rsquo;s marks during the upload.</b> Mitigated by never deleting the local copy until the upload is confirmed &mdash; but a half-finished import at 10pm in November is exactly the moment a teacher stops trusting you.</div></li>
+    <li><span class="b"></span><div><b>Duplicate pupils on the roster.</b> The failure mode of a school-level roster: import without emails a few times and one child becomes four records, which looks like nothing is wrong until somebody wants progress over time. Hence matching on identifiers only, and showing what the import decided before it writes.</div></li>
+    <li><span class="b"></span><div><b>Moving pupils out of assessments spreading.</b> It touches the marksheet, the CSV importer and the feedback engine. Smaller than the classes refactor it replaces, but still the phase most likely to overrun.</div></li>
+    <li><span class="b"></span><div><b>A roster is data held for longer.</b> Pupils used to vanish when an assessment was deleted; now a school accumulates a register that persists. That needs a real answer on retention &mdash; see the question below &mdash; and it is exactly what a DPO will ask about.</div></li>
+    <li><span class="b"></span><div><b>Region is chosen once.</b> A Supabase project&rsquo;s region cannot be changed afterwards &mdash; only migrated to a new project. Selecting London at creation matters more than anything else on setup day.</div></li>
+    <li><span class="b"></span><div><b>Free-tier limits at Supabase.</b> Free projects pause after a period of inactivity, which is fine while building and not fine once a school depends on it. Budget for the paid tier before the first real trial, not after.</div></li>
+    <li><span class="b"></span><div><b>Everything in section 09 is unbudgeted time.</b> The DPA and the privacy notice are not code and will not write themselves at the weekend.</div></li>
+  </ul>
+</section>
+
+<!-- ========================================================== 12 -->
+<section id="s12">
+  <div class="sec-head"><span class="sec-num">12</span><h2>Decided, and what is left</h2></div>
+
+  <p class="intro">
+    Every open question from the first draft now has an answer. These are the
+    ones the build assumes; changing any of them later means changing code, so
+    they are written down rather than remembered.
+  </p>
+
+  <div class="scroll">
+    <table>
+      <thead><tr><th>Question</th><th>Decision</th><th>Consequence</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><b>Where the app is served</b></td>
+          <td>Vercel, alongside the API</td>
+          <td><code>httpOnly</code> session cookies; CORS goes away; GitHub Pages retired</td>
+        </tr>
+        <tr>
+          <td><b>Pupils and classes</b></td>
+          <td>Pupils belong to the school; each assessment has an entry list</td>
+          <td>Tier splits and set changes both handled; no class structure to maintain</td>
+        </tr>
+        <tr>
+          <td><b>Recognising a pupil</b></td>
+          <td>Optional MIS id, then school email. Never a name</td>
+          <td>One new optional CSV column; ambiguous rows go to a human</td>
+        </tr>
+        <tr>
+          <td><b>Joining a school</b></td>
+          <td>Invitation only, with a domain hint and a request button</td>
+          <td>An admin always decides; colleagues stop duplicating each other</td>
+        </tr>
+        <tr>
+          <td><b>Pupil retention</b></td>
+          <td>Removed automatically after 24 months with no assessment</td>
+          <td>A scheduled job, and a specific line in the privacy notice</td>
+        </tr>
+        <tr>
+          <td><b>Free tier</b></td>
+          <td>Solo: 1 teacher, 35 pupils, 200 emails a month, no sharing</td>
+          <td>Collaboration is the paywall, so stacking free accounts gains nothing</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>The one thing I need from you</h3>
+
+  <p>
+    Create the Supabase project. It is the only step I cannot do, and one part
+    of it is irreversible.
+  </p>
+
+  <ol class="steps">
+    <li>Sign up at supabase.com and create a project named <code>everypupil</code>.</li>
+    <li><b>Set the region to West Europe (London), <code>eu-west-2</code>.</b> A project&rsquo;s region cannot be changed afterwards &mdash; only migrated to a new one. This is the single most consequential click of the setup.</li>
+    <li>Save the database password it generates somewhere you will not lose it.</li>
+    <li>From <b>Project Settings &rarr; API</b>, send me the <b>Project URL</b> and the <b>anon public key</b>. Both are safe to share &mdash; the anon key is designed to sit in a browser, and Row Level Security is what protects the data behind it.</li>
+    <li><b>Do not send me the <code>service_role</code> key.</b> It bypasses every security policy by design. Put it straight into Vercel&rsquo;s environment variables and nowhere else &mdash; not a message, not a file, not the repository.</li>
+  </ol>
+
+  <div class="panel flag good">
+    <h4>Still worth doing first</h4>
+    <p>
+      Get the marketing site live and show it to two or three heads of
+      department you know. Their reaction to &pound;195 and &pound;495 will
+      teach you more than a month of building, and phases 1 to 3 are far easier
+      to justify once somebody has said they would use it.
+    </p>
+  </div>
+
+  <p class="endnote">
+    Estimates assume part-time evenings and weekends and will move. The order is
+    firmer than the durations: each phase depends on the one before it, and
+    phase 5 should not start until a school has asked to pay.
+  </p>
+</section>
+
+</main>
+</div>

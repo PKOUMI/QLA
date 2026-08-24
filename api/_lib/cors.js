@@ -36,6 +36,9 @@ export function applyCors(req, res) {
     res.setHeader('Vary', 'Origin');
   }
   res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
+  // Without this the browser hides Retry-After from cross-origin responses, so
+  // the app cannot honour the wait a rate limiter asks for and backs off blindly.
+  res.setHeader('Access-Control-Expose-Headers', 'Retry-After');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-QLA-Key');
   res.setHeader('Access-Control-Max-Age', '86400');
 
@@ -56,12 +59,28 @@ export function applyCors(req, res) {
   };
 }
 
-/** Shared-secret check. See ARCHITECTURE.md §6 — this is not real auth. */
+/**
+ * Shared-secret check. See ARCHITECTURE.md §6 — this is not real auth.
+ *
+ * Both sides are trimmed. Pasting a generated key into a dashboard field picks
+ * up a trailing newline or space remarkably easily, and an invisible character
+ * causing an authentication failure is a miserable thing to debug.
+ */
 export function checkSharedKey(req) {
-  const expected = process.env.APP_SHARED_KEY || '';
-  if (!expected) return { ok: true, skipped: true }; // not configured = open
-  const provided = req.headers['x-qla-key'] || '';
-  return { ok: timingSafeEqual(String(provided), expected), skipped: false };
+  const expected = (process.env.APP_SHARED_KEY || '').trim();
+  const provided = String(req.headers['x-qla-key'] || '').trim();
+
+  if (!expected) return { ok: true, skipped: true, required: false }; // not configured = open
+
+  return {
+    ok: timingSafeEqual(provided, expected),
+    skipped: false,
+    required: true,
+    provided: provided.length > 0,
+    // The caller's own input, so echoing it reveals nothing they do not have.
+    // Enough to spot a truncated or empty paste at a glance.
+    providedLength: provided.length,
+  };
 }
 
 /** Constant-time compare so the key can't be guessed a character at a time. */

@@ -24,7 +24,7 @@ export function clientKey(req) {
 /**
  * @returns {{ok: boolean, retryAfter: number, remaining: number}}
  */
-export function checkRateLimit(key, limit = Number(process.env.RATE_LIMIT_PER_MINUTE || 6)) {
+export function checkRateLimit(key, limit = Number(process.env.RATE_LIMIT_PER_MINUTE || 40)) {
   const now = Date.now();
   const bucket = buckets.get(key);
 
@@ -47,7 +47,9 @@ export function checkRateLimit(key, limit = Number(process.env.RATE_LIMIT_PER_MI
 
 /** Hard ceiling on emails per hour for the whole deployment. */
 export function checkHourlyEmailCap(count) {
-  const cap = Number(process.env.MAX_EMAILS_PER_HOUR || 500);
+  // A whole year group sitting a core subject is 400 pupils, and their
+  // parents doubles it. 500 an hour refused that; 5000 does not.
+  const cap = Number(process.env.MAX_EMAILS_PER_HOUR || 5000);
   const now = Date.now();
   if (now - hourly.windowStart > 60 * 60 * 1000) {
     hourly.windowStart = now;

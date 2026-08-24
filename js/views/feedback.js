@@ -10,7 +10,8 @@ import { allResults, formatMark } from '../grades.js';
 import { validateAssessment } from '../validation.js';
 import { renderFeedbackEmail, DEFAULT_EMAIL_TEXT } from '../../shared/email-template.js';
 import { newId } from '../model.js';
-import { $, el, clear, toast, openModal, closeModal, confirmDialog, callout, plural } from '../ui.js';
+import { toCsv } from '../csv.js';
+import { $, el, clear, toast, openModal, closeModal, confirmDialog, callout, plural, downloadFile } from '../ui.js';
 import { canEdit } from '../lock.js';
 import { renderLockBar, applyLockState } from '../lockbar.js';
 import { state, update } from '../app.js';
@@ -157,8 +158,17 @@ function renderSendTable(assessment) {
           everSelected.add(state.assessment);
           update((a) => {
             const set = new Set(a.feedback.selectedPupilIds);
-            if (event.target.checked) set.add(pupil.id); else set.delete(pupil.id);
+            const parents = new Set(a.feedback.parentSelectedPupilIds);
+            if (event.target.checked) {
+              set.add(pupil.id);
+            } else {
+              // Dropping a pupil drops their parent too — emailing a parent
+              // about feedback the pupil is not getting makes no sense.
+              set.delete(pupil.id);
+              parents.delete(pupil.id);
+            }
             a.feedback.selectedPupilIds = [...set];
+            a.feedback.parentSelectedPupilIds = [...parents];
           });
         },
       })),
@@ -208,10 +218,7 @@ function updateCounts(assessment) {
   // A parent email is sent only when the pupil is selected AND their own tick
   // in the Parents column is on AND a parent address exists.
   const parentSelected = new Set(assessment.feedback.parentSelectedPupilIds);
-  const parentCount = selected.filter((id) => {
-    const pupil = assessment.pupils.find((p) => p.id === id);
-    return pupil && pupil.parentEmail.trim() && parentSelected.has(id);
-  }).length;
+  const parentCount = parentEligible(assessment).filter((p) => parentSelected.has(p.id)).length;
 
   const sendableCount = sendablePupils(assessment).length;
   $('#selected-count').textContent = `${selected.length} selected`;
@@ -586,9 +593,12 @@ async function handleSend() {
         replyTo: assessment.exam.teacherEmail,
         schoolName: window.QLA_CONFIG?.schoolName || '',
       },
-      ({ done, total }) => {
+      ({ done, total, phase, waitSeconds }) => {
         bar.style.width = `${Math.round((done / total) * 100)}%`;
-        label.textContent = `Sending ${Math.min(done + 1, total)} of ${total}…`;
+        label.textContent = phase === 'waiting'
+          // A pause is not a failure, and the teacher should be able to see that.
+          ? `Sent ${done} of ${total}. Pausing ${waitSeconds}s for the email provider, then continuing…`
+          : `Sending ${Math.min(done + 1, total)} of ${total}…`;
       },
     );
 
@@ -628,50 +638,154 @@ function buildMessages(assessment) {
   const parentSelected = new Set(assessment.feedback.parentSelectedPupilIds);
 
   for (const pupil of assessment.pupils) {
-    if (!selected.has(pupil.id)) continue;
     const status = pupilSendStatus(assessment, pupil);
     if (!status.canSend) continue;
+
+    const wantsPupil = selected.has(pupil.id);
+    const wantsParent = parentSelected.has(pupil.id) && pupil.parentEmail.trim();
+    if (!wantsPupil && !wantsParent) continue;
 
     const data = buildPupilFeedback(assessment, pupil);
     // Sent with this pupil's own wording, so an individually edited email is
     // delivered exactly as it was previewed.
     const text = wordingFor(assessment, pupil.id);
-    messages.push({ id: `${pupil.id}:pupil`, type: 'pupil', to: pupil.email.trim(), data, text });
+    if (wantsPupil) {
+      messages.push({ id: `${pupil.id}:pupil`, type: 'pupil', to: pupil.email.trim(), data, text });
+    }
 
-    // Parent email only when this pupil's own Parents tick is on AND an
-    // address exists. The master toggle only sets those ticks; it is never
-    // consulted here, so an individual exclusion always wins.
-    if (parentSelected.has(pupil.id) && pupil.parentEmail.trim()) {
+    // Independent of the pupil's own tick, so a parent email that bounced can
+    // be re-sent on its own without giving the pupil a second copy.
+    if (wantsParent) {
       messages.push({ id: `${pupil.id}:parent`, type: 'parent', to: pupil.parentEmail.trim(), data, text });
     }
   }
   return messages;
 }
 
+/**
+ * The results of a send, in full.
+ *
+ * An earlier version showed ten failures and no successes, which left a
+ * teacher with 120 failed emails and no way to work out who still needed one.
+ * Everything is listed, everything is filterable, and the failures can be
+ * retried in one click without touching the pupils who already received theirs.
+ */
 function renderSendResults() {
   const node = clear($('#send-results'));
   if (!lastResults) return;
 
-  const failures = lastResults.results.filter((r) => r.status !== 'sent');
-  const skipped = lastResults.results.filter((r) => r.status === 'skipped');
+  const results = lastResults.results || [];
+  const failed = results.filter((r) => r.status === 'failed');
+  const skipped = results.filter((r) => r.status === 'skipped');
+  const sent = results.filter((r) => r.status === 'sent');
+  const simulated = results.some((r) => r.simulated);
 
-  const simulated = lastResults.results.some((r) => r.simulated);
-  if (lastResults.sent > 0) {
+  /* --- Headline ------------------------------------------------------- */
+  if (sent.length) {
     node.append(simulated
       // Never let a dry run look like a real send.
       ? callout('warn', 'Simulated only — no email was actually sent',
-        `The backend is running with DRY_RUN=true, so ${plural(lastResults.sent, 'email')} ${lastResults.sent === 1 ? 'was' : 'were'} prepared but not delivered. Remove DRY_RUN from the server's environment variables to send for real.`)
-      : callout('ok', 'Feedback sent',
-        `${plural(lastResults.sent, 'email')} accepted by the email provider.`));
+        `The backend is running with DRY_RUN=true, so ${plural(sent.length, 'email')} ${sent.length === 1 ? 'was' : 'were'} prepared but not delivered. Remove DRY_RUN from the server's environment variables to send for real.`)
+      : callout(failed.length ? 'warn' : 'ok',
+        failed.length ? 'Partly sent' : 'Feedback sent',
+        `${plural(sent.length, 'email')} accepted by the email provider${failed.length ? `, ${failed.length} failed` : ''}.`));
+  } else if (failed.length) {
+    node.append(callout('bad', 'Nothing was sent', `All ${plural(failed.length, 'email')} failed. The reasons are listed below.`));
   }
+
   if (skipped.length) {
     node.append(callout('info', 'Some emails were skipped',
-      skipped.map((r) => `${r.to} — ${r.error || 'already sent in this batch'}`)));
+      skipped.map((r) => `${r.to} — ${r.error || 'already sent in this batch'}`).slice(0, 8)));
   }
-  const realFailures = failures.filter((r) => r.status === 'failed');
-  if (realFailures.length) {
-    node.append(callout('bad', `${plural(realFailures.length, 'email')} failed`,
-      realFailures.slice(0, 10).map((r) => `${r.to} — ${r.error || 'unknown error'}`)));
-    node.append(el('p', { class: 'hint', style: 'margin-top:-6px', text: 'Fix the addresses on the set-up page, deselect everyone who succeeded, and send again.' }));
+
+  if (!results.length) return;
+
+  /* --- Retry, without re-sending to anyone who got one ----------------- */
+  if (failed.length) {
+    const retryBar = el('div', { class: 'retry-bar' },
+      el('div', {},
+        el('strong', { text: `${plural(failed.length, 'email')} still to send` }),
+        el('span', { class: 'hint', text: ' Everyone who already received theirs is left alone.' })),
+      el('div', { class: 'spacer' }),
+      el('button', {
+        class: 'btn btn-sm btn-primary', type: 'button',
+        onclick: () => {
+          // Exactly the messages that failed — not the pupils they belong to.
+          // A pupil whose own email arrived but whose parent's bounced is left
+          // unticked, so they cannot receive a second copy.
+          const failedPupilEmails = failed.filter((r) => r.type !== 'parent')
+            .map((r) => String(r.id).split(':')[0]);
+          const failedParentEmails = failed.filter((r) => r.type === 'parent')
+            .map((r) => String(r.id).split(':')[0]);
+          update((a) => {
+            a.feedback.selectedPupilIds = failedPupilEmails.filter((id) => a.pupils.some((p) => p.id === id));
+            a.feedback.parentSelectedPupilIds = failedParentEmails.filter((id) => a.pupils.some((p) => p.id === id));
+          });
+          toast(`Ready to re-send ${plural(failed.length, 'email')} — only the ones that failed.`, 'ok', 7000);
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        },
+      }, 'Select the failures only'),
+    );
+    node.append(retryBar);
   }
+
+  /* --- The full list, filterable -------------------------------------- */
+  const rows = el('tbody');
+  const draw = (filter) => {
+    clear(rows);
+    const shown = filter === 'all' ? results : results.filter((r) => r.status === filter);
+    for (const r of shown) {
+      rows.append(el('tr', {},
+        el('td', {}, el('span', {
+          class: `pill ${r.status === 'sent' ? 'pill-ok' : r.status === 'failed' ? 'pill-bad' : 'pill-warn'}`,
+          text: r.status === 'sent' ? (r.simulated ? 'simulated' : 'sent') : r.status,
+        })),
+        el('td', {}, el('span', { class: 'em', text: r.to || '—' })),
+        el('td', { text: r.type === 'parent' ? 'Parent' : 'Pupil' }),
+        el('td', { class: 'reason', text: r.error || '' }),
+      ));
+    }
+    if (!shown.length) rows.append(el('tr', {}, el('td', { colspan: '4', class: 'muted', text: 'Nothing in this group.' })));
+  };
+
+  const tabs = el('div', { class: 'result-tabs' });
+  const addTab = (key, label, count) => {
+    if (!count && key !== 'all') return;
+    tabs.append(el('button', {
+      class: `btn btn-sm${key === (failed.length ? 'failed' : 'all') ? ' btn-primary' : ''}`,
+      type: 'button', dataset: { filter: key },
+      onclick: (event) => {
+        draw(key);
+        for (const b of tabs.querySelectorAll('button')) b.classList.toggle('btn-primary', b === event.currentTarget);
+      },
+    }, `${label} (${count})`));
+  };
+  addTab('all', 'All', results.length);
+  addTab('failed', 'Failed', failed.length);
+  addTab('sent', 'Sent', sent.length);
+  addTab('skipped', 'Skipped', skipped.length);
+
+  node.append(el('div', { class: 'results-panel' },
+    el('div', { class: 'results-head' },
+      tabs,
+      el('div', { class: 'spacer' }),
+      el('button', {
+        class: 'btn btn-sm', type: 'button',
+        onclick: () => {
+          const rowsOut = [['Status', 'Email', 'Recipient', 'Reason']]
+            .concat(results.map((r) => [r.status, r.to || '', r.type === 'parent' ? 'Parent' : 'Pupil', r.error || '']));
+          downloadFile('qla-send-results.csv', toCsv(rowsOut), 'text/csv;charset=utf-8');
+        },
+      }, 'Download results'),
+    ),
+    el('div', { class: 'table-wrap results-table' },
+      el('table', { class: 'data-table compact' },
+        el('thead', {}, el('tr', {},
+          el('th', { text: 'Status' }), el('th', { text: 'Email' }),
+          el('th', { text: 'Recipient' }), el('th', { text: 'Reason' }))),
+        rows)),
+  ));
+
+  // Open on the group that needs attention.
+  draw(failed.length ? 'failed' : 'all');
 }

@@ -177,8 +177,8 @@ deliver. Step 7 covers switching to your own domain.
 | `FROM_NAME` | `Assessment Feedback` |
 | `ALLOWED_ORIGINS` | `https://YOURNAME.github.io` |
 | `APP_SHARED_KEY` | a long random string — see below |
-| `RATE_LIMIT_PER_MINUTE` | `6` |
-| `MAX_EMAILS_PER_HOUR` | `500` |
+| `RATE_LIMIT_PER_MINUTE` | `40` |
+| `MAX_EMAILS_PER_HOUR` | `5000` |
 
    Generate the shared key with one of these:
 
@@ -263,6 +263,21 @@ Add `DRY_RUN` = `true` to the Vercel environment variables and redeploy. The
 whole flow runs, but no email leaves the building, and the app labels the result
 **"Simulated only — no email was actually sent"** rather than claiming success.
 Remove the variable when you are ready to send for real.
+
+### Sending to a whole year group
+
+The app sends 60 recipients per request, and the server passes each request to
+Resend's batch endpoint, which takes up to 100 emails in a single API call. A
+400-pupil year group with parents (800 emails) is about 14 requests and 16 calls
+to Resend &mdash; comfortably inside every limit involved.
+
+If a rate limit is hit anyway, the app **waits and continues**. It reads the
+`Retry-After` the server sends, shows "pausing 12s, then continuing" on the
+progress bar, and resumes. A rate limit is never reported as a failed email.
+
+**Resend's free tier is capped at 100 emails a day**, regardless of any of the
+above. One class is fine; a year group is not. That is the point at which the
+$20/month tier (50,000 a month, no daily limit) becomes necessary.
 
 ### If email does not arrive
 

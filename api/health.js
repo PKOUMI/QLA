@@ -6,7 +6,7 @@
  * It reports WHETHER a key is set, never the key itself.
  */
 
-import { applyCors } from './_lib/cors.js';
+import { applyCors, checkSharedKey } from './_lib/cors.js';
 import { mailerStatus } from './_lib/mailer.js';
 
 export default async function handler(req, res) {
@@ -27,12 +27,21 @@ export default async function handler(req, res) {
   }
 
   const status = mailerStatus();
+
+  // Check the key here too, and REPORT rather than reject. A health check that
+  // passes while sending fails on authentication is worse than no health check:
+  // it tells you everything is ready when it is not.
+  const key = checkSharedKey(req);
+
   return res.status(200).json({
     ok: true,
     time: new Date().toISOString(),
     emailConfigured: status.emailConfigured,
     fromAddress: status.fromAddress,   // safe: it is the public sender address
     dryRun: status.dryRun,
-    sharedKeyRequired: Boolean(process.env.APP_SHARED_KEY),
+    sharedKeyRequired: key.required === true,
+    sharedKeyProvided: key.provided === true,
+    sharedKeyValid: key.required ? key.ok : null,
+    sharedKeyProvidedLength: key.providedLength ?? 0,
   });
 }

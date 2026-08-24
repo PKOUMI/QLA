@@ -191,13 +191,24 @@ export function columnChart(width, { data, unitLabel = 'pupils', height = 260 })
  * every segment is direct-labelled and a legend is always shown — colour is
  * never the only thing telling two grades apart.
  */
-const ORDINAL_RAMP = ['#86b6ef', '#5598e7', '#2a78d6', '#1c5cab', '#104281'];
+const RAMP_STEPS = 5;
 
+/**
+ * Which step of the ordered ramp a segment uses. The colours themselves live
+ * in css/styles.css as .viz-ramp-0 to .viz-ramp-4, so rebranding the app
+ * never means editing JavaScript.
+ */
+export function rampClass(index, count) {
+  if (count <= 1) return 'viz-ramp-2';
+  const step = Math.round((index / (count - 1)) * (RAMP_STEPS - 1));
+  return `viz-ramp-${step}`;
+}
+
+/** The rendered colour of a ramp step, read from the stylesheet. */
 export function rampColour(index, count) {
-  if (count <= 1) return ORDINAL_RAMP[2];
-  const position = index / (count - 1);
-  const scaled = position * (ORDINAL_RAMP.length - 1);
-  return ORDINAL_RAMP[Math.round(scaled)];
+  const step = rampClass(index, count).replace('viz-ramp-', '');
+  return getComputedStyle(document.documentElement)
+    .getPropertyValue(`--viz-ramp-${step}`).trim() || '#2a78d6';
 }
 
 export function donutChart(width, { data, unitLabel = 'pupils', height = 260 }) {
@@ -230,8 +241,7 @@ export function donutChart(width, { data, unitLabel = 'pupils', height = 260 }) 
     const path = svg('path', {
       d: `M${p(outer, start)}A${outer},${outer} 0 ${large} 1 ${p(outer, end)}`
         + `L${p(inner, end)}A${inner},${inner} 0 ${large} 0 ${p(inner, start)}Z`,
-      fill: rampColour(index, data.length),
-      class: 'viz-slice',
+      class: `viz-slice ${rampClass(index, data.length)}`,
     });
     attachTip(path, `${datum.label}: ${datum.value} ${unitLabel}`);
     root.appendChild(path);

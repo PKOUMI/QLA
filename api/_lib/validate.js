@@ -9,7 +9,9 @@
 const EMAIL_RE = /^[^\s@,;]+@[^\s@,;]+\.[A-Za-z]{2,}$/;
 
 export const LIMITS = {
-  maxMessagesPerRequest: 25,
+  // A core-subject year group can be 400 pupils. The old limit of 25 turned
+  // that into 32 requests, which the rate limiter then refused.
+  maxMessagesPerRequest: 100,
   maxQuestions: 200,
   maxTopicLength: 120,
   maxNameLength: 100,
