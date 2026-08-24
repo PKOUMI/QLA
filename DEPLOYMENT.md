@@ -279,6 +279,32 @@ progress bar, and resumes. A rate limit is never reported as a failed email.
 above. One class is fine; a year group is not. That is the point at which the
 $20/month tier (50,000 a month, no daily limit) becomes necessary.
 
+### Warming up a new sending domain
+
+A brand-new domain that sends 800 emails on its first day looks like a spam
+blast, and a damaged reputation is far harder to repair than to avoid. Resend's
+published schedule:
+
+| Day | Emails that day | Per hour |
+|---|---:|---:|
+| 1 | 150 | &mdash; |
+| 2 | 250 | &mdash; |
+| 3 | 400 | &mdash; |
+| 4 | 700 | 50 |
+| 5 | 1,000 | 75 |
+| 6 | 1,500 | 100 |
+| 7 | 2,000 | 150 |
+
+Set `MAX_EMAILS_PER_HOUR` to match the day you are on and raise it as you go.
+The app then holds the line itself rather than depending on anyone remembering.
+
+**Also ask the school's IT team to allowlist your sending domain** before any
+trial involving more than one class. School mail is nearly always Microsoft 365
+with Defender, which treats a few hundred external emails arriving at once
+exactly as you would want it to treat spam. It is a routine request every edtech
+supplier makes, it takes IT minutes, and skipping it means a working trial can
+land silently in quarantine and look like a broken product.
+
 ### If email does not arrive
 
 | Symptom | Cause | Fix |

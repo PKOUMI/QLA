@@ -827,6 +827,41 @@ figcaption{font-size:.85rem;color:var(--faint);margin-top:10px;max-width:66ch}
     deliverability for every customer.
   </p>
 
+  <h3>Before the whole school tries it</h3>
+
+  <div class="panel flag warn">
+    <h4>Two things must happen before a school-wide trial &mdash; phase 3 or 4</h4>
+    <p>
+      <b>Move to Resend Pro.</b> The free tier is capped at 100 emails a day
+      whatever else is configured. One class fits; a year group does not, and a
+      whole school certainly does not. Pro is $20 a month for 50,000 a month
+      with no daily limit.
+    </p>
+    <p>
+      <b>Warm the domain up first.</b> A brand-new sending domain that emits 800
+      emails on its first day looks exactly like a spam blast, and the damage to
+      your reputation is far harder to undo than to avoid. Resend publish a
+      seven-day schedule &mdash; 150 emails on day one, then 250, 400, 700,
+      1,000, 1,500, 2,000 &mdash; with hourly limits of 50 to 150 from day four.
+    </p>
+  </div>
+
+  <p>
+    <code>MAX_EMAILS_PER_HOUR</code> already exists for exactly this. Set it to
+    the warm-up figure for the day you are on and raise it as you go: the app
+    will hold the line for you rather than relying on anyone remembering.
+  </p>
+
+  <p>
+    The other half of a school trial is not technical at all. School mail is
+    almost always Microsoft 365 with Defender, which treats a few hundred
+    external emails arriving at once exactly as you would hope it treats spam.
+    <b>Ask the school&rsquo;s IT team to allowlist your sending domain before
+    the trial starts.</b> It is a routine request they handle for every edtech
+    supplier, it takes them minutes, and without it a perfectly working trial
+    can land silently in quarantine and look like a broken product.
+  </p>
+
   <p>
     Stripe comes last, and only once schools are actually asking to pay. It is
     a subscription per organisation, a webhook that sets <code>plan</code>, and
@@ -970,6 +1005,7 @@ figcaption{font-size:.85rem;color:var(--faint);margin-top:10px;max-width:66ch}
           to authorise by session.
         </p>
         <div class="done"><b>Done when</b> marks entered on one device appear on another, and the sample GCSE assessment survives a round trip intact.</div>
+        <div class="done"><b>Before any real school sends</b> Resend Pro, domain warm-up started, and the school&rsquo;s IT asked to allowlist the sending domain.</div>
       </div>
     </div>
 

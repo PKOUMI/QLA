@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>EveryPupil — summary for the data protection lead</title>
+<style>
+/* Written to print cleanly to A4: open in a browser, Ctrl+P, Save as PDF. */
+:root{
+  --ink:#111827; --body:#374151; --muted:#6b7280; --line:#e5e7eb;
+  --accent:#4338ca; --wash:#eef2ff; --warn-wash:#fffbeb; --warn-line:#fde68a;
+}
+*{box-sizing:border-box}
+body{
+  margin:0 auto;padding:40px 32px 64px;max-width:820px;background:#fff;color:var(--body);
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  font-size:15px;line-height:1.6;
+}
+h1,h2,h3{color:var(--ink);margin:0;line-height:1.25}
+h1{font-size:1.75rem;letter-spacing:-.02em}
+h2{font-size:1.08rem;margin:30px 0 10px;padding-bottom:6px;border-bottom:2px solid var(--line)}
+h3{font-size:.95rem;margin:16px 0 4px}
+p{margin:0 0 .8rem;max-width:72ch}
+.sub{color:var(--muted);margin:8px 0 0;font-size:1rem}
+.fill{background:var(--wash);padding:1px 6px;border-radius:3px;color:var(--accent);font-weight:600}
+header{border-bottom:3px solid var(--accent);padding-bottom:16px}
+.meta{display:flex;flex-wrap:wrap;gap:6px 28px;margin-top:14px;font-size:.82rem;color:var(--muted)}
+.meta b{color:var(--body);font-weight:600}
+table{width:100%;border-collapse:collapse;margin:0 0 14px;font-size:.9rem}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+th{background:#f9fafb;font-size:.74rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+ul{margin:0 0 14px;padding-left:20px} li{margin-bottom:5px}
+.note{background:var(--warn-wash);border:1px solid var(--warn-line);border-radius:8px;padding:14px 16px;margin:0 0 16px}
+.note p{margin:0;font-size:.92rem}
+.note strong{color:#78350f}
+footer{margin-top:36px;padding-top:14px;border-top:1px solid var(--line);font-size:.8rem;color:var(--muted)}
+@media print{
+  body{padding:0;font-size:11pt;max-width:none}
+  h2{page-break-after:avoid} table,.note{page-break-inside:avoid}
+}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>EveryPupil — summary for the data protection lead</h1>
+  <p class="sub">An internal tool for question-level analysis and pupil feedback, proposed for a pilot at <span class="fill">[SCHOOL NAME]</span>.</p>
+  <div class="meta">
+    <span><b>Prepared by</b> <span class="fill">[YOUR NAME]</span>, <span class="fill">[DEPARTMENT]</span></span>
+    <span><b>Date</b> <span class="fill">[DATE]</span></span>
+    <span><b>Status</b> Pilot, not yet in use</span>
+  </div>
+</header>
+
+<h2>1. What it does</h2>
+<p>
+  A teacher enters exam marks question by question. The tool calculates totals
+  and grades against boundaries the teacher sets, shows which topics the class
+  found hardest, and emails each pupil a personalised summary of their own
+  performance with suggested revision. It replaces a spreadsheet plus thirty
+  hand-written comments.
+</p>
+
+<h2>2. What personal data it holds</h2>
+<table>
+  <thead><tr><th>Data</th><th>Whose</th><th>Why it is needed</th></tr></thead>
+  <tbody>
+    <tr><td>Name</td><td>Pupil</td><td>To identify whose marks are whose, and to address the email</td></tr>
+    <tr><td>School email address</td><td>Pupil</td><td>To deliver the feedback</td></tr>
+    <tr><td>Parent email address <em>(optional)</em></td><td>Parent/carer</td><td>Only where a teacher chooses to copy them in</td></tr>
+    <tr><td>Marks per question</td><td>Pupil</td><td>The purpose of the tool</td></tr>
+    <tr><td>Name and email</td><td>Staff</td><td>To sign in</td></tr>
+  </tbody>
+</table>
+<p><strong>What it does not hold:</strong> no addresses, no dates of birth, no
+photographs, no SEN or pupil premium flags, no attendance or behaviour records,
+no free-text comments about individual children, and no special category data
+of any kind.</p>
+
+<h2>3. Where the data is stored</h2>
+<table>
+  <thead><tr><th>Processor</th><th>Role</th><th>Location</th></tr></thead>
+  <tbody>
+    <tr><td>Supabase</td><td>Database and sign-in</td><td>London, United Kingdom (<code>eu-west-2</code>)</td></tr>
+    <tr><td>Vercel</td><td>Runs the application</td><td>London, United Kingdom (<code>lhr1</code>)</td></tr>
+    <tr><td>Resend</td><td>Delivers the feedback emails</td><td>EU region</td></tr>
+  </tbody>
+</table>
+<p>Data is not transferred outside the UK or EU in normal operation. All
+connections use HTTPS. There are no advertising or analytics trackers in the
+application, and pupil data is never sold, shared, or used to train AI models.</p>
+
+<h2>4. Who can see it</h2>
+<ul>
+  <li>Only staff explicitly added to the pilot can sign in. There is no self-registration &mdash; an account must be created for you.</li>
+  <li>Access is enforced by the database itself, not only by the application. A fault in the application code returns no data rather than the wrong data.</li>
+  <li>Sign-in is by a one-time link sent to a school email address. No passwords are stored.</li>
+  <li>Pupils do not have accounts and cannot sign in. They receive an email and nothing more.</li>
+  <li>Parents are contacted only where a teacher has ticked that pupil individually. Excluding one child from parental contact does not exclude them from feedback &mdash; this was a deliberate safeguarding requirement.</li>
+</ul>
+
+<h2>5. How long it is kept, and how it is removed</h2>
+<ul>
+  <li>Pupil records and marks are kept while the pilot runs, and deleted at the end of it unless the school decides to continue.</li>
+  <li>Any pupil, assessment or the entire dataset can be deleted on request, immediately.</li>
+  <li>All data can be exported to CSV at any point.</li>
+  <li>Sent emails are logged as a count and timestamp for audit. The content is not retained after sending.</li>
+</ul>
+
+<h2>6. Lawful basis</h2>
+<p>
+  The school remains the data controller throughout. The processing supports
+  the school's public task in providing education &mdash; the same basis as
+  reporting assessment outcomes to pupils by any other means. The tool changes
+  how feedback reaches a pupil, not what the school is entitled to tell them
+  about their own work.
+</p>
+
+<h2>7. Risks, and what is done about them</h2>
+<table>
+  <thead><tr><th>Risk</th><th>Mitigation</th></tr></thead>
+  <tbody>
+    <tr><td>Feedback sent to the wrong pupil</td><td>Every email is built from that pupil's own record. The teacher previews the exact email and confirms a dialogue naming how many will be sent.</td></tr>
+    <tr><td>Feedback sent before marking is finished</td><td>A part-marked paper has no total and no grade and cannot be selected for sending.</td></tr>
+    <tr><td>A parent contacted who should not be</td><td>Parent contact is a separate tick per pupil, not a setting for the class.</td></tr>
+    <tr><td>Unauthorised access</td><td>Named accounts only; database-level access control; UK hosting; HTTPS throughout.</td></tr>
+    <tr><td>Data loss</td><td>Managed database with automated backups. Full CSV export available at any time.</td></tr>
+  </tbody>
+</table>
+
+<h2>8. What I am asking for</h2>
+<p>
+  Approval to pilot the tool with <span class="fill">[NUMBER]</span> members of
+  staff and <span class="fill">[NUMBER]</span> pupils in
+  <span class="fill">[DEPARTMENT]</span> during
+  <span class="fill">[TERM]</span>, and a view on whether a data protection
+  impact assessment is required before it begins.
+</p>
+
+<div class="note">
+  <p><strong>Stated plainly:</strong> this tool was written by a member of staff
+  and has not been independently security tested or certified. It is proposed
+  as a departmental pilot, not a whole-school system. If it is adopted more
+  widely, or offered to other schools, it should be reassessed properly at that
+  point &mdash; including a full DPIA, a written processing agreement, and
+  independent security assurance.</p>
+</div>
+
+<footer>
+  Replace every <span class="fill">[HIGHLIGHTED]</span> field before sending.
+  Print to PDF from your browser to attach this to an email.
+</footer>
+
+</body>
+</html>
