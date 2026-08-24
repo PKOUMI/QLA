@@ -1,4 +1,4 @@
-# QLA — Question Level Analysis &amp; Feedback
+# EveryPupil — Question Level Analysis &amp; Feedback
 
 Set up an assessment, enter marks question by question, and send every pupil
 personalised feedback in a few minutes — instead of maintaining a fragile Excel
@@ -128,10 +128,23 @@ address in it ends in `.invalid`, so nothing can reach a real person. See
 - **Failures are reported honestly.** If the provider returns an error, the app
   says the email failed and shows why. It never reports a send that did not happen.
 
+## Signing in
+
+If `config.js` has Supabase details, the app asks for a school email address
+and emails back a six-digit code. Only addresses on the school's staff list
+work; see `supabase/README.md` for how that list is set up and how a teacher
+gets linked to their school.
+
+With no Supabase details in `config.js` the app skips all of that and runs
+entirely in the browser, which is what the public demo does.
+
 ## What this is not, yet
 
-No user accounts, no database, no payments. Data lives in one browser — export a
-JSON backup regularly. The shared access key is a speed bump, not
-authentication. **This is not GDPR-compliant software** and must not be described
-as such; ARCHITECTURE.md §6 lists the twelve things needed before real schools
-use it.
+Marks are still saved **in the browser**, not in the database. Signing in
+identifies who you are; it does not yet move your work. Until it does, two
+things follow: a marksheet started on one computer cannot be finished on
+another, and signing out on a shared computer leaves that class's marks in
+that browser. Use your own machine until the storage step lands.
+
+No payments. **This is not GDPR-compliant software** and must not be described
+as such; ARCHITECTURE.md §6 lists what is needed before real schools use it.

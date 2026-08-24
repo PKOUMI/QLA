@@ -20,12 +20,17 @@ import * as marksheetView from './views/marksheet.js';
 import * as analyseView from './views/analyse.js';
 import * as feedbackView from './views/feedback.js';
 import { checkHealth } from './api.js';
+import { requireSignIn } from './auth.js';
+import { isConfigured } from './supabase.js';
 
 /* --- State --------------------------------------------------------------- */
 
 export const state = {
   assessment: null,
   route: 'setup',
+  /** Who is signed in, and which school they belong to. Null when the app is
+   *  running without a database — see boot(). */
+  session: null,
 };
 
 const VIEWS = {
@@ -298,6 +303,20 @@ async function openAssessments() {
 /* --- Boot ---------------------------------------------------------------- */
 
 async function boot() {
+  // Tell the boot guard in index.html that the JavaScript arrived. This has to
+  // happen BEFORE the sign-in screen, not after it: someone waiting for a code
+  // to reach their inbox will sit here for minutes, and the guard would
+  // otherwise decide the app had failed to start and cover their screen with a
+  // deployment error.
+  window.__QLA_BOOTED = true;
+
+  // With no database configured the app still runs, saving to this browser
+  // only. That is what the public demo does, and it keeps the app usable while
+  // a school is still deciding.
+  if (isConfigured()) {
+    state.session = await requireSignIn();
+  }
+
   state.assessment = await loadCurrentAssessment();
 
   setupView.init();
@@ -321,10 +340,6 @@ async function boot() {
   const initial = window.location.hash.replace('#', '');
   goTo(ROUTES.includes(initial) ? initial : 'setup');
   setSaveState('Saved');
-
-  // Tells the boot guard in index.html that everything loaded. Without this it
-  // shows a "could not start" message after a few seconds.
-  window.__QLA_BOOTED = true;
 
   const pupils = state.assessment.pupils.length;
   if (pupils) toast(`Welcome back — ${plural(pupils, 'pupil')} loaded.`, 'info', 3000);

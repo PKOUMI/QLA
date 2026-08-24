@@ -117,14 +117,23 @@ async function call(path, { method = 'GET', body, headers = {}, auth = true, raw
 /**
  * Send a one-time code to a school email address.
  *
- * `shouldCreateUser: false` matters: it means an address nobody has added
- * cannot create itself an account. Teachers are added deliberately.
+ * `create_user: true` looks alarming and is not. It is what lets a teacher
+ * sign in for the first time without an administrator creating their account
+ * by hand — sixty of those is a job nobody will do, and a job nobody does is a
+ * school that never starts using the tool.
+ *
+ * What actually decides who gets in is the Before User Created hook in
+ * 0002_access.sql: an address that is not on the school's staff list is
+ * refused before an account exists. And if that hook were switched off, an
+ * account with no membership row still reads nothing, because every policy
+ * goes through app_org_ids(). The gate is the staff list, in the database,
+ * not this flag in the browser.
  */
 export async function sendSignInCode(email) {
   await call('/auth/v1/otp', {
     method: 'POST',
     auth: false,
-    body: { email: String(email).trim().toLowerCase(), create_user: false },
+    body: { email: String(email).trim().toLowerCase(), create_user: true },
   });
   return true;
 }
@@ -226,6 +235,17 @@ export async function insertRows(table, rows, { upsert = false, onConflict } = {
       Prefer: `return=representation${upsert ? ',resolution=merge-duplicates' : ''}`,
     },
   }) || [];
+}
+
+/**
+ * Call a database function.
+ *
+ * Used for the things that must not be decided in the browser — linking a
+ * sign-in to a school, for instance, which reads the address from auth.users
+ * rather than trusting whatever the caller says it is.
+ */
+export async function rpc(name, args = {}) {
+  return call(`/rest/v1/rpc/${encode(name)}`, { method: 'POST', body: args });
 }
 
 export async function updateRows(table, match, changes) {

@@ -227,3 +227,28 @@
 - Schema version 2. Existing saved assessments are migrated automatically on
   load: the removed fields are dropped and the new `settings` and `emailText`
   blocks are added with sensible defaults. Nothing needs re-entering.
+
+## Sign in
+
+Teachers sign in with their school email address and a six-digit code. No
+passwords, and nothing for an administrator to create by hand.
+
+- **New:** `js/auth.js` — the sign-in screen, the "you are signed in as"
+  strip in the header, and sign out.
+- **New:** `supabase/migrations/0002_access.sql` — the staff list, the
+  Before User Created hook that refuses an address nobody has added, and the
+  two routes that turn an invitation into a membership.
+- **New:** `supabase/seed/first-school.sql` — creates the school and its owner.
+- **New:** `tests/browser/` — the sign-in screen driven in a real Chromium,
+  with a stand-in Supabase. 24 checks. `npm run test:browser`.
+- **Changed:** the app now waits for a signed-in teacher before loading, but
+  only when `config.js` has database details. Without them it still runs
+  entirely in the browser, which is what the public demo does.
+- **Changed:** `window.__QLA_BOOTED` is set before the sign-in screen appears,
+  not after the app loads. Somebody waiting for a code to arrive would
+  otherwise have the deployment-error banner thrown over the top of it.
+- **Changed:** the app is called EveryPupil in the header and the title bar,
+  which is what the sign-in screen says and what the domain says.
+- **Fixed:** `tests/security.sql` was five separate statements, and the
+  Supabase SQL Editor only shows the last one. Four checks were running and
+  being discarded. Now one query, seven rows.

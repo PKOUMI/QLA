@@ -3,10 +3,10 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>QLA — Question Level Analysis &amp; Feedback</title>
+<title>EveryPupil — Question Level Analysis &amp; Feedback</title>
 <meta name="description" content="Set up an assessment, enter marks question by question, and send personalised feedback to a whole class in minutes.">
 <meta name="robots" content="noindex">
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%234f46e5'/><text y='68' x='50' text-anchor='middle' font-size='52' font-family='system-ui' font-weight='700' fill='white'>Q</text></svg>">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%234f46e5'/><text y='68' x='50' text-anchor='middle' font-size='46' font-family='system-ui' font-weight='700' fill='white'>EP</text></svg>">
 <link rel="stylesheet" href="css/styles.css">
 <script src="config.js"></script>
 </head>
@@ -15,8 +15,8 @@
 <!-- ======================================================== HEADER / NAV -->
 <header class="app-header">
   <a class="brand" href="#setup">
-    <span class="brand-mark" aria-hidden="true">QL</span>
-    <span class="brand-name">QLA<small>Question Level Analysis</small></span>
+    <span class="brand-mark" aria-hidden="true">EP</span>
+    <span class="brand-name">EveryPupil<small>Question Level Analysis</small></span>
   </a>
 
   <nav class="steps" aria-label="Workflow">
@@ -38,6 +38,7 @@
   </nav>
 
   <div class="header-actions">
+    <div class="who" id="who" hidden></div>
     <span class="save-state" id="save-state" role="status" aria-live="polite">Saved</span>
     <button class="btn btn-sm btn-ghost" id="btn-assessments" type="button" title="Saved assessments">Assessments</button>
     <button class="btn btn-sm btn-ghost" id="btn-settings" type="button" title="Email settings">Settings</button>
@@ -385,6 +386,7 @@
     'js/ui.js',
     'js/lock.js',
     'js/supabase.js',
+    'js/auth.js',
     'js/lockbar.js',
     'js/charts.js',
     'js/views/setup.js',

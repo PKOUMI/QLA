@@ -17,6 +17,7 @@ import { validateMark, validateAssessment, isValidEmail, isValidUrl, csvSafeCell
 import { parsePupilCsv, parseCsv, toCsv } from '../js/csv.js';
 import { buildLock, pinMatches, validatePin } from '../js/lock.js';
 import { renderFeedbackEmail, DEFAULT_EMAIL_TEXT } from '../shared/email-template.js';
+import { signInErrorMessage, normaliseEmail, looksLikeEmail } from '../js/auth.js';
 
 let passed = 0;
 let failed = 0;
@@ -840,11 +841,80 @@ await asyncTest('PIN format is enforced', async () => {
   assert.ok(validatePin(''), 'empty is rejected');
 });
 
+/* ============================== signing in ============================== */
+
+/** The shape js/supabase.js throws. */
+function providerError(message, status) {
+  const error = new Error(message);
+  error.status = status;
+  return error;
+}
+
+test('a pasted address is trimmed and lowercased the way the database stores it', () => {
+  assert.equal(normaliseEmail('  A.Teacher@School.SCH.UK '), 'a.teacher@school.sch.uk');
+  assert.equal(normaliseEmail(null), '');
+});
+
+test('an obviously malformed address is caught before a request is made', () => {
+  assert.equal(looksLikeEmail('a.teacher@school.sch.uk'), true);
+  assert.equal(looksLikeEmail('a.teacher@school'), false);   // no dot in the domain
+  assert.equal(looksLikeEmail('a.teacher'), false);
+  assert.equal(looksLikeEmail(''), false);
+});
+
+test('an address that is not on the staff list says who to ask', () => {
+  const message = signInErrorMessage(providerError('Signups not allowed for otp', 422), 'send');
+  assert.match(message, /staff list/);
+  assert.match(message, /typo/);
+});
+
+test('the hook\'s own refusal is passed through, because it names the school', () => {
+  const hook = providerError("That address is not on your school's staff list. Ask whoever set up EveryPupil at your school to add it.", 403);
+  assert.equal(signInErrorMessage(hook, 'send'), hook.message);
+});
+
+test('a wrong code never suggests the address is at fault', () => {
+  const message = signInErrorMessage(providerError('Token has expired or is invalid', 403), 'verify');
+  assert.match(message, /code is wrong or has expired/);
+  assert.doesNotMatch(message, /staff list/);
+});
+
+test('the rate limit tells you how long to wait when the provider says', () => {
+  const message = signInErrorMessage(providerError('For security purposes, you can only request this after 41 seconds.', 429), 'send');
+  assert.match(message, /wait 41 seconds/);
+});
+
+test('a rate limit with no number still gives an instruction', () => {
+  const message = signInErrorMessage(providerError('email rate limit exceeded', 429), 'send');
+  assert.match(message, /Wait a few minutes/);
+});
+
+test('one second is not "1 seconds"', () => {
+  const message = signInErrorMessage(providerError('you can only request this after 1 seconds.', 429), 'send');
+  assert.match(message, /wait 1 second\b/);
+});
+
+test('a dropped connection is not reported as a rejected account', () => {
+  const message = signInErrorMessage(providerError('Failed to fetch', 0), 'send');
+  assert.match(message, /internet connection/);
+  assert.doesNotMatch(message, /staff list/);
+});
+
+test('an unrecognised provider error is passed on rather than swallowed', () => {
+  const message = signInErrorMessage(providerError('Database error creating new user', 500), 'send');
+  assert.equal(message, 'Database error creating new user');
+});
+
+test('an error with no message at all still says something useful', () => {
+  assert.match(signInErrorMessage({}, 'send'), /Something went wrong/);
+});
+
 /* ================================ report ================================ */
 
 console.log('\n');
 for (const { name, error } of failures) {
   console.log(`FAILED: ${name}\n  ${error.message}\n`);
 }
+
 console.log(`${passed} passed, ${failed} failed\n`);
 process.exit(failed === 0 ? 0 : 1);

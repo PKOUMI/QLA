@@ -652,3 +652,67 @@ body.marks-expanded #marksheet-card .stat .k{margin-top:0;font-size:10px}
 .results-table td.reason{color:var(--muted);font-size:12.5px;min-width:220px}
 .pill-ok{background:var(--ok-bg);color:var(--ok);border:1px solid var(--ok-line)}
 .pill-bad{background:var(--bad-bg);color:var(--bad);border:1px solid var(--bad-line)}
+
+/* --- Sign in ------------------------------------------------------------ *
+ *
+ * A full-cover panel rather than a modal: there is no app behind it yet, and
+ * showing the header and an empty marksheet under a dialog would suggest
+ * otherwise. `is-signed-out` hides the chrome while it is up.
+ * ----------------------------------------------------------------------- */
+body.is-signed-out .app-header,
+body.is-signed-out .app-main{display:none}
+
+.auth-gate{
+  position:fixed;inset:0;z-index:80;overflow:auto;
+  display:flex;align-items:center;justify-content:center;
+  padding:32px 20px;background:var(--canvas);
+}
+.auth-card{
+  width:100%;max-width:400px;background:var(--surface);
+  border:1px solid var(--line);border-radius:var(--radius-lg);
+  box-shadow:var(--shadow);padding:28px;
+}
+.auth-brand{display:flex;align-items:center;gap:10px;margin-bottom:20px}
+.auth-brand-name{font-weight:700;font-size:17px;color:var(--ink);letter-spacing:-.01em}
+.auth-card h1{font-size:1.35rem;margin-bottom:6px}
+.auth-lead{color:var(--body);margin-bottom:20px}
+.auth-note{color:var(--muted);font-size:12.5px;margin:14px 0 0;line-height:1.5}
+
+.auth-form{display:flex;flex-direction:column;gap:8px}
+.auth-form label{font-weight:600;color:var(--ink);font-size:13px}
+.auth-form input{
+  width:100%;padding:11px 12px;font:inherit;color:var(--ink);
+  background:var(--surface);border:1px solid var(--line-strong);border-radius:var(--radius);
+}
+.auth-form input:focus-visible{border-color:var(--brand-600);outline:2px solid var(--brand-200);outline-offset:0}
+.auth-form .btn{margin-top:8px;padding:11px 16px}
+
+/* Big, spaced and monospaced: a six-digit code is read back character by
+   character against an email, and proportional digits make that harder. */
+.auth-code{
+  font-family:var(--mono);font-size:24px;letter-spacing:.32em;
+  text-align:center;padding:12px 12px 12px 20px !important;
+}
+.auth-code::placeholder{color:var(--faint);letter-spacing:.32em}
+
+.auth-error{
+  background:var(--bad-bg);border:1px solid var(--bad-line);color:var(--bad-ink);
+  border-radius:var(--radius);padding:10px 12px;font-size:13.5px;
+}
+.auth-actions{display:flex;align-items:center;gap:16px;margin-top:16px;flex-wrap:wrap}
+.auth-link{
+  background:none;border:0;padding:0;font:inherit;font-size:13px;
+  color:var(--brand-600);cursor:pointer;text-decoration:underline;
+}
+.auth-link[disabled]{color:var(--muted);cursor:default;text-decoration:none}
+
+/* --- Who is signed in --------------------------------------------------- */
+.who{display:flex;align-items:center;gap:10px;min-width:0}
+.who-school{font-weight:600;color:var(--ink);font-size:13px;white-space:nowrap}
+.who-email{
+  color:var(--muted);font-size:12.5px;max-width:200px;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+@media (max-width:900px){
+  .who-email{display:none}
+}
