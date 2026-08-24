@@ -5,15 +5,35 @@ first (London region, `eu-west-2` — it cannot be changed afterwards).
 
 ## 1. Create the tables
 
-Supabase dashboard → **SQL Editor** → **New query** → paste the whole of
-`migrations/0001_schema.sql` → **Run**.
+Supabase dashboard → **SQL Editor** in the left sidebar → **New query** →
+paste the whole of `migrations/0001_schema.sql` → **Run** (or Ctrl+Enter).
+
+That is the only SQL editor you need. It runs against your live database, so
+there is nothing to install and no connection string to configure.
 
 It should finish with no errors. It creates eight tables, the security
 policies, and two triggers.
 
 ## 2. Check it is actually locked down
 
-Same place, paste `tests/security.sql`, Run. **Every line must say PASS.**
+Three ways, in increasing order of how much they prove.
+
+### Supabase's own Security Advisor
+
+Dashboard → **Database** → **Security Advisor**. Supabase runs its own checks
+there, including `rls_disabled_in_public` (a public table with security off) and
+`rls_enabled_no_policy` (security on but nothing allowed through, so the app
+breaks). Worth a glance after any schema change — it catches things nobody
+thinks to look for.
+
+### The Table Editor
+
+Dashboard → **Table Editor**. Each table shows whether RLS is on. All eight
+should say enabled.
+
+### The checks in this repo
+
+Same SQL Editor, paste `tests/security.sql`, Run. **Every line must say PASS.**
 
 If any says FAIL, stop and tell me before putting real pupil data in. These
 checks exist because the likeliest route to a real breach is a table added
@@ -57,6 +77,21 @@ where u.email in (
 Only people in `memberships` can see anything. A Supabase account with no
 membership row signs in successfully and finds an empty application, which is
 the behaviour you want — not an error, and not somebody else's pupils.
+
+## Why you do not have to switch RLS on yourself
+
+`0001_schema.sql` does it, with an explicit
+`alter table ... enable row level security` for all eight tables, and every
+policy is scoped `to authenticated` so a signed-out visitor is excluded by
+name rather than by side effect.
+
+That last part matters more than it looks. Supabase grants table privileges to
+the `anon` role on every new public table by design — so "anon has no
+privileges" is the wrong thing to check, and a checker that flags it would be
+crying wolf on a perfectly safe project. What actually keeps anon out is that
+no policy admits it. Verified here against PostgreSQL 16 with those default
+grants in place: a signed-out request reads **0 rows**, while the teacher reads
+their own.
 
 ## What the security policies actually do
 

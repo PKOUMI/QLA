@@ -165,32 +165,35 @@ alter table assessment_pupils  enable row level security;
 alter table marks              enable row level security;
 alter table send_log           enable row level security;
 
+-- Every policy is scoped `to authenticated`. Supabase grants table privileges
+-- to anon by default, so saying who a policy is for makes the intent explicit
+-- rather than leaving anon's exclusion to rest on auth.uid() being null.
 -- Tables that carry org_id directly.
-create policy org_read   on organisations for select using (id in (select app_org_ids()));
-create policy mem_read   on memberships   for select using (user_id = auth.uid());
+create policy org_read   on organisations for select to authenticated using (id in (select app_org_ids()));
+create policy mem_read   on memberships   for select to authenticated using (user_id = auth.uid());
 
-create policy pupils_all on pupils      for all
+create policy pupils_all on pupils      for all to authenticated
   using (org_id in (select app_org_ids()))
   with check (org_id in (select app_org_ids()));
 
-create policy assess_all on assessments for all
+create policy assess_all on assessments for all to authenticated
   using (org_id in (select app_org_ids()))
   with check (org_id in (select app_org_ids()));
 
 -- Children reach org_id through their parent assessment.
-create policy questions_all on questions for all
+create policy questions_all on questions for all to authenticated
   using (assessment_id in (select id from assessments))
   with check (assessment_id in (select id from assessments));
 
-create policy entries_all on assessment_pupils for all
+create policy entries_all on assessment_pupils for all to authenticated
   using (assessment_id in (select id from assessments))
   with check (assessment_id in (select id from assessments));
 
-create policy marks_all on marks for all
+create policy marks_all on marks for all to authenticated
   using (assessment_id in (select id from assessments))
   with check (assessment_id in (select id from assessments));
 
-create policy sendlog_all on send_log for all
+create policy sendlog_all on send_log for all to authenticated
   using (assessment_id in (select id from assessments))
   with check (assessment_id in (select id from assessments));
 

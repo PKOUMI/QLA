@@ -33,14 +33,19 @@ where n.nspname = 'public'
   and c.relrowsecurity
   and not exists (select 1 from pg_policies p where p.tablename = c.relname);
 
--- 3. Nothing in public is readable by an anonymous visitor.
+-- 3. No policy lets a signed-out visitor through.
+--    NOT a check that anon lacks table grants: Supabase grants privileges to
+--    anon on every new public table by design, and RLS is what actually decides
+--    the rows. Checking the grants would fail here on a perfectly safe project,
+--    and a check that cries wolf is one you learn to ignore.
 select
   case when count(*) = 0
-    then 'PASS  the anon role has no table privileges in public'
-    else 'FAIL  anon can reach: ' || string_agg(distinct table_name, ', ')
-  end as check_anon_locked_out
-from information_schema.role_table_grants
-where grantee = 'anon' and table_schema = 'public';
+    then 'PASS  every policy is scoped to signed-in users only'
+    else 'FAIL  these policies also apply to anon: ' || string_agg(policyname, ', ')
+  end as check_anon_has_no_policy
+from pg_policies
+where schemaname = 'public'
+  and ('anon' = any(roles) or 'public' = any(roles));
 
 -- 4. A mark can be NULL. If this ever becomes NOT NULL, "not marked yet"
 --    collapses into "scored zero" and the app starts lying to children.
