@@ -47,7 +47,8 @@ const page = await connect();
 
 const text = (sel) => page.evaluate(`(document.querySelector(${JSON.stringify(sel)})||{}).textContent || ''`);
 const visible = (sel) => page.evaluate(`(() => { const n = document.querySelector(${JSON.stringify(sel)}); if (!n) return false; const s = getComputedStyle(n); return s.display !== 'none' && s.visibility !== 'hidden'; })()`);
-const type = (sel, value) => page.evaluate(`(() => { const n = document.querySelector(${JSON.stringify(sel)}); n.value = ${JSON.stringify(value)}; n.dispatchEvent(new Event('input', {bubbles:true})); return true; })()`);
+const type = (sel, value) => page.evaluate(`(() => { const n = document.querySelector(${JSON.stringify(sel)}); n.value = ${JSON.stringify(value)}; n.dispatchEvent(new InputEvent('input', {bubbles:true, inputType:'insertText'})); return true; })()`);
+const paste = (sel, value) => page.evaluate(`(() => { const n = document.querySelector(${JSON.stringify(sel)}); n.value = ${JSON.stringify(value)}; n.dispatchEvent(new InputEvent('input', {bubbles:true, inputType:'insertFromPaste'})); return true; })()`);
 const submit = (sel) => page.evaluate(`(() => { document.querySelector(${JSON.stringify(sel)}).requestSubmit(); return true; })()`);
 const err = () => page.evaluate(`(() => { const n = document.querySelector('#auth-error'); return n && !n.hidden ? n.textContent : ''; })()`);
 
@@ -86,18 +87,32 @@ check('the address is echoed back, normalised', (await text('#auth-sent-to')).in
 check('resend is on a countdown, not simply broken', /Send another code in \d+s/.test(await text('.auth-link')));
 
 console.log('\n6. A wrong code');
-await type('#auth-code', '000000');
+await paste('#auth-code', '00000000');
 await until(page, `(() => { const n = document.querySelector('#auth-error'); return n && !n.hidden; })()`, 'the wrong-code message');
 const wrong = await err();
 check('it blames the code, not the address', /code is wrong or has expired/.test(wrong), wrong);
 check('it does not mention the staff list', !/staff list/.test(wrong));
 
-console.log('\n7. Non-digits cannot be typed into the code box');
+console.log('\n7. The code box does not assume six digits');
 await type('#auth-code', '12ab34');
 check('letters are stripped', (await page.evaluate(`document.querySelector('#auth-code').value`)) === '1234');
+await type('#auth-code', '12345678');
+check('an eight-digit code fits', (await page.evaluate(`document.querySelector('#auth-code').value`)) === '12345678');
+// Typing must not fire a verify request at six digits: on a project whose
+// codes are eight digits long that would spend an attempt on a truncated one.
+await type('#auth-code', '123456');
+await sleep(400);
+check('typing six digits does not sign anybody in',
+  await page.evaluate(`/Check your email/.test(document.querySelector('#auth-title').textContent)`));
+check('and does not clear the box or move on',
+  (await page.evaluate(`document.querySelector('#auth-code').value`)) === '123456');
+await type('#auth-code', '1234');
+await submit('.auth-form');
+await sleep(200);
+check('a half-typed code is caught before it costs an attempt', /too short/.test(await err()), await err());
 
 console.log('\n8. The right code signs the teacher in');
-await type('#auth-code', '123456');
+await paste('#auth-code', '12345678');
 await until(page, `!document.querySelector('#auth-gate')`, 'the gate to close');
 check('the sign-in screen has gone', !(await page.evaluate(`!!document.querySelector('#auth-gate')`)));
 check('the app is visible', await visible('.app-main'));
@@ -121,7 +136,7 @@ console.log('\n11. Signed in, but nobody has linked the account to a school');
 await type('#auth-email', 'nobody@northgate.sch.uk');
 await submit('.auth-form');
 await until(page, `/Check your email/.test(document.querySelector('#auth-title').textContent)`, 'the code screen');
-await type('#auth-code', '123456');
+await paste('#auth-code', '12345678');
 await until(page, `/Almost there/.test((document.querySelector('#auth-title')||{}).textContent || '')`, 'the no-school screen');
 check('it does not look like a rejection', /Almost there/.test(await text('#auth-title')));
 check('it says nothing is wrong with the account', /Nothing is wrong with your account/.test(await text('.auth-gate')));

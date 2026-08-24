@@ -168,7 +168,7 @@ function askForEmail(prefill, onSent) {
     errorBox(),
     submit,
     el('p', { class: 'auth-note' },
-      'We will email you a six-digit code. There is no password to remember. ',
+      'We will email you a code. There is no password to remember. ',
       'Only addresses your school has added can sign in.'),
   );
 
@@ -182,10 +182,25 @@ function askForEmail(prefill, onSent) {
 
 /* --- Step 2: the code ---------------------------------------------------- */
 
+/*
+ * HOW LONG IS THE CODE?
+ * Six, usually. Eight, sometimes. GoTrue's MAILER_OTP_LENGTH is a server
+ * setting, and which value a Supabase project is created with has changed over
+ * time — so a client that hardcodes six is a client that will one day refuse
+ * to accept the code it was just sent. Worse, `maxlength="6"` would make the
+ * last two digits physically untypeable.
+ *
+ * So: take anything from six to ten digits, and let the server be the judge of
+ * whether it is right. The check here only exists to catch a half-typed code
+ * before it costs somebody an attempt.
+ */
+const MIN_CODE = 6;
+const MAX_CODE = 10;
+
 function askForCode(address, onVerified, onRestart) {
   const input = el('input', {
     type: 'text', id: 'auth-code', inputmode: 'numeric', autocomplete: 'one-time-code',
-    maxlength: '6', class: 'auth-code', placeholder: '000000', 'aria-describedby': 'auth-sent-to',
+    maxlength: String(MAX_CODE), class: 'auth-code', placeholder: 'Code', 'aria-describedby': 'auth-sent-to',
   });
 
   const submit = el('button', { class: 'btn btn-primary btn-block', type: 'submit' }, 'Sign in');
@@ -193,8 +208,8 @@ function askForCode(address, onVerified, onRestart) {
   const attempt = async () => {
     hideError();
     const code = input.value.replace(/\D/g, '');
-    if (code.length !== 6) {
-      showError('Enter the six-digit code from the email.');
+    if (code.length < MIN_CODE) {
+      showError('That code looks too short. Copy the whole code from the email.');
       input.focus();
       return;
     }
@@ -209,12 +224,15 @@ function askForCode(address, onVerified, onRestart) {
     }
   };
 
-  // Codes are pasted as often as typed. Submitting on the sixth digit saves a
-  // click; the length check above still catches a short paste.
-  input.addEventListener('input', () => {
-    const digits = input.value.replace(/\D/g, '').slice(0, 6);
+  // Codes are pasted as often as typed, and a paste is a whole code by
+  // definition — so submit on paste and save a click. Typing never
+  // auto-submits: we do not know how long this project's codes are, and
+  // firing at six digits would spend an attempt on a truncated eight-digit
+  // code, which is a maddening thing to have happen to you.
+  input.addEventListener('input', (event) => {
+    const digits = input.value.replace(/\D/g, '').slice(0, MAX_CODE);
     if (digits !== input.value) input.value = digits;
-    if (digits.length === 6) attempt();
+    if (event.inputType === 'insertFromPaste' && digits.length >= MIN_CODE) attempt();
   });
 
   const resend = el('button', { class: 'auth-link', type: 'button', disabled: true }, 'Send another code');
@@ -236,7 +254,7 @@ function askForCode(address, onVerified, onRestart) {
     class: 'auth-form', novalidate: true,
     onsubmit: (event) => { event.preventDefault(); attempt(); },
   },
-    el('label', { for: 'auth-code', text: 'Six-digit code' }),
+    el('label', { for: 'auth-code', text: 'Code from the email' }),
     input,
     errorBox(),
     submit,

@@ -252,3 +252,9 @@ passwords, and nothing for an administrator to create by hand.
 - **Fixed:** `tests/security.sql` was five separate statements, and the
   Supabase SQL Editor only shows the last one. Four checks were running and
   being discarded. Now one query, seven rows.
+- **Fixed:** the code box assumed six digits. GoTrue's OTP length is a server
+  setting and some projects send eight — and `maxlength="6"` made the last two
+  physically untypeable. It now accepts six to ten and lets the server judge.
+  Typing no longer auto-submits, because firing at six digits would spend an
+  attempt on a truncated eight-digit code; pasting still does, since a pasted
+  code is a whole one.

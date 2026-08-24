@@ -122,8 +122,18 @@ the code:
 <p>It is valid for one hour. If you did not ask for it, ignore this email.</p>
 ```
 
-`{{ .Token }}` is the six digits. Without it, the email arrives with nothing to
-type in.
+Without `{{ .Token }}`, the email arrives with nothing to type in.
+
+**Paste it into two templates, not one.** A teacher signing in for the first
+time is a new account, so GoTrue sends **Confirm signup**; everybody after that
+gets **Magic Link**. Edit only one and either the first sign-in or every
+subsequent one arrives as a link nobody asked for.
+
+The code may be six digits or eight — GoTrue's OTP length is a server setting
+and which value a project is created with has varied. The app takes anything
+from six to ten and lets the server decide whether it is right, so you do not
+have to match a number anywhere. Longer is stronger: if yours sends eight,
+leave it.
 
 ### Point Supabase at Resend
 

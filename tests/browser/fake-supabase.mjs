@@ -45,7 +45,10 @@ const server = http.createServer((req, res) => {
     }
 
     if (p === '/auth/v1/verify') {
-      if (payload.token !== '123456') return send(403, { msg: 'Token has expired or is invalid' });
+      // Eight digits on purpose: GoTrue's OTP length is a server setting and
+      // some projects are created with eight. A client that only accepts six
+      // fails here.
+      if (payload.token !== '12345678') return send(403, { msg: 'Token has expired or is invalid' });
       return send(200, {
         access_token: 'access-token', refresh_token: 'refresh-token', expires_in: 3600,
         user: { id: 'user-1', email: payload.email },
