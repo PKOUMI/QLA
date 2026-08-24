@@ -10,6 +10,7 @@ Run the files in order. Each one is safe to run again.
 |---|---|
 | `migrations/0001_schema.sql` | The eight tables and the security policies |
 | `migrations/0002_access.sql` | Who is allowed to sign in, and how they get linked to your school |
+| `migrations/0003_roles.sql` | What each role may do once they are in |
 | `seed/first-school.sql` | Creates your school and makes you the owner. Edit two lines first |
 | `tests/security.sql` | Proves the above. Seven rows, all PASS |
 
@@ -90,9 +91,17 @@ normalised on the way in. Roles:
 
 | Role | Can |
 |---|---|
-| `teacher` | Set up assessments, enter marks, send feedback |
-| `admin` | All of that, plus adding and removing staff |
+| `teacher` | Enter marks, on the assessments they have been assigned to. Read the whole school's assessments and analysis |
+| `admin` | All of that, plus creating and editing assessments, managing pupils, sending feedback, assigning who marks what, and managing staff |
 | `owner` | The same as admin. Kept separate so there is always one |
+
+The line is drawn at the two acts with consequences: deciding what the paper
+says, and putting an email in front of a parent. Typing a 4 into a box is not
+one of those.
+
+A teacher can read the analysis for any assessment in the school — that is the
+information that changes what they teach next lesson. What they cannot do is
+change a paper, add a pupil, or send anything.
 
 To see who has actually signed in:
 
@@ -201,6 +210,24 @@ And `0002_access.sql`, checked the same way:
 | An owner adds somebody to a *different* school | Rejected |
 | Signed out, reading the staff list | No privilege at all |
 | A signed-in user calling the signup hook directly | Not permitted |
+
+And `0003_roles.sql`:
+
+| Attempt | Result |
+|---|---|
+| Assigned teacher enters a mark | Allowed |
+| Assigned teacher reads the paper and its analysis | Allowed |
+| Assigned teacher adds a question | Rejected |
+| Assigned teacher creates their own assessment | Rejected |
+| Assigned teacher renames the paper | 0 rows changed |
+| Assigned teacher records a send | Rejected |
+| Assigned teacher adds a pupil | Rejected |
+| Assigned teacher assigns another marker | Rejected |
+| **Unassigned** colleague reads the marks | Allowed — analysis is shared |
+| **Unassigned** colleague changes a mark | 0 rows changed |
+| **Unassigned** colleague runs `delete from marks` with no `where` | Nothing deleted |
+| Admin edits the paper, sends, marks, adds pupils | All allowed |
+| Signed out, reading assessments or marks | 0 rows |
 
 ## A note on the free plan
 

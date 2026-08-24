@@ -258,3 +258,19 @@ passwords, and nothing for an administrator to create by hand.
   Typing no longer auto-submits, because firing at six digits would spend an
   attempt on a truncated eight-digit code; pasting still does, since a pasted
   code is a whole one.
+
+## Roles
+
+`teacher` no longer means "can do everything except manage staff".
+
+- **New:** `supabase/migrations/0003_roles.sql`. A teacher enters marks and
+  reads the school's assessments and analysis. Creating or editing a paper,
+  managing pupils, and sending feedback are an admin's.
+- **New:** `assessment_teachers` — which staff are marking which paper. A
+  teacher can only write marks on an assessment they have been assigned to, so
+  a mistake can only ever land on their own paper.
+- **New:** `school_staff()` — lists colleagues for the "who is marking this?"
+  screen. SECURITY DEFINER, because listing them reads `auth.users`.
+- Every table now has a read policy the whole school passes and a write policy
+  only the right role passes. Permissive policies OR together, so the read
+  policy never grants a write.

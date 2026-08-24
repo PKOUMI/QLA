@@ -33,8 +33,10 @@ end $$;
 -- Adding the rest of your staff. One row each, addresses as they appear in
 -- your MIS. Case and spacing do not matter. Roles:
 --
---   teacher  set up assessments, enter marks, send feedback
---   admin    all of that, plus adding and removing staff
+--   teacher  enter marks on the assessments they are assigned to, and read
+--            the school's assessments and analysis
+--   admin    all of that, plus creating and editing assessments, managing
+--            pupils, sending feedback, and adding and removing staff
 --   owner    the same as admin (kept separate so there is always one)
 --
 -- Paste over the example rows and run just this statement.
