@@ -101,7 +101,7 @@ const server = start(PORT);
 const { verifySignInCode, signOut } = await import('../js/supabase.js');
 const { newAssessment, newQuestion, newPupil, setMark } = await import('../js/model.js');
 const {
-  createSupabaseRepo, reidentify, planWrites, diffMarks, describeWriteError,
+  createSupabaseRepo, reidentify, planWrites, diffMarks, describeWriteError, marksOnly,
 } = await import('../js/storage-supabase.js');
 
 /** Sign in as somebody, through the app's own code path. */
@@ -202,7 +202,8 @@ await test('an unassigned teacher cannot change a mark, and is told why', async 
   setMark(doc, doc.pupils[0].id, doc.questions[0].id, 5);
 
   await assert.rejects(() => repo.save(doc), (error) => {
-    assert.match(error.message, /needs an admin/);
+    assert.match(error.message, /NOT saved/, 'it must not imply the marks are safe');
+    assert.match(error.message, /Ask an admin/);
     return true;
   });
 });
@@ -227,6 +228,61 @@ await test('an assigned teacher can enter marks', async () => {
   assert.equal(Number(stored[0].mark), 2);
 });
 
+await test('a teacher whose document has drifted still gets their marks in', async () => {
+  // The situation this guards against: something other than the teacher has
+  // left a change in their copy of the assessment — a normalised field, a
+  // default filled in by a newer version — and their next mark entry would
+  // otherwise be refused as an attempt to edit the paper.
+  const repo = createSupabaseRepo({ orgId: ORG, userId: MARKER, canManage: () => false });
+  await signInAs(MARKER, 'marker@northgate.sch.uk');
+  const doc = await repo.get(saved.id);
+
+  doc.exam.subject = 'Chemistry';                 // not theirs to change
+  doc.settings.analyse.topicSort = 'name';        // nor this
+  setMark(doc, doc.pupils[1].id, doc.questions[0].id, 1);   // this is
+
+  await repo.save(doc);   // must not throw
+
+  const stored = rows(`select mark from marks where pupil_id = '${doc.pupils[1].id}' and question_id = '${doc.questions[0].id}'`);
+  assert.equal(Number(stored[0].mark), 1, 'the mark must be saved');
+  assert.equal(rows(`select subject from assessments where id = '${saved.id}'`)[0].subject, 'Biology',
+    'and the drift must not have been written');
+});
+
+await test('what a teacher may write is decided before anything is sent', () => {
+  const before = sampleDoc();
+  const after = structuredClone(before);
+  after.exam.name = 'Renamed';
+  after.questions.push(newQuestion('02', 4));
+  setMark(after, after.pupils[0].id, after.questions[0].id, 5);
+
+  const full = planWrites(before, after, { orgId: ORG, userId: MARKER });
+  const { plan, dropped } = marksOnly(full);
+
+  assert.equal(plan.assessment, null);
+  assert.equal(plan.questions.insert.length, 0);
+  assert.equal(plan.marks.changed.length, 1, 'the mark is kept');
+  assert.deepEqual(dropped.sort(), ['assessment', 'questions']);
+});
+
+await test('an admin is never trimmed', () => {
+  const before = sampleDoc();
+  const after = structuredClone(before);
+  after.exam.name = 'Renamed';
+  const full = planWrites(before, after, { orgId: ORG, userId: ADMIN });
+  assert.ok(full.assessment, 'an admin sends the whole difference');
+});
+
+await test('a refused mark never claims the marks were saved', () => {
+  const refusal = new Error('new row violates row-level security policy for table "marks"');
+  refusal.status = 403;
+  const message = describeWriteError(refusal, 'marks');
+  assert.match(message, /NOT saved/);
+  assert.doesNotMatch(message, /marks were saved/i,
+    'the old wording told a teacher their marking was safe when it was not');
+  assert.match(message, /Ask an admin/);
+});
+
 await test('an assigned teacher cannot change the paper — and their marks survive the attempt', async () => {
   const repo = await signInAs(MARKER, 'marker@northgate.sch.uk');
   const doc = await repo.get(saved.id);
@@ -236,7 +292,7 @@ await test('an assigned teacher cannot change the paper — and their marks surv
 
   await assert.rejects(() => repo.save(doc), (error) => {
     assert.match(error.message, /Your marks were saved/);
-    assert.match(error.message, /needs an admin/);
+    assert.match(error.message, /only be changed by an admin/);
     return true;
   });
 

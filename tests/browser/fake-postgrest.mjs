@@ -163,10 +163,21 @@ export function start(port = PORT) {
     req.on('data', (chunk) => { body += chunk; });
     req.on('end', () => {
       const url = new URL(req.url, 'http://localhost');
+      // The real Supabase is on another origin from the app and answers
+      // preflights. Without this the browser blocks every request before it is
+      // sent, which looks exactly like a permissions problem and is not one.
+      const cors = {
+        'Access-Control-Allow-Origin': req.headers.origin || '*',
+        'Access-Control-Allow-Methods': 'GET,POST,PATCH,DELETE,OPTIONS',
+        'Access-Control-Allow-Headers': 'authorization, apikey, content-type, prefer, x-client-info',
+        'Access-Control-Expose-Headers': 'Content-Range',
+        Vary: 'Origin',
+      };
       const send = (code, payload) => {
-        res.writeHead(code, { 'Content-Type': 'application/json' });
+        res.writeHead(code, { 'Content-Type': 'application/json', ...cors });
         res.end(typeof payload === 'string' ? payload : JSON.stringify(payload));
       };
+      if (req.method === 'OPTIONS') { res.writeHead(204, cors); return res.end(); }
 
       // Supabase puts the user id in a signed JWT. Here the test simply says
       // who it is: "Bearer user:<uuid>", or "Bearer service" for setup.

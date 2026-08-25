@@ -401,3 +401,47 @@ The two jobs that still needed the SQL editor now have screens.
   confirmation link that goes nowhere, then a working code on the second
   attempt, which looks like an intermittent fault rather than a missing
   template.
+
+## A teacher's marks always land
+
+Reported from a real department: a teacher enters a mark, is told "Your marks
+were saved, but changing this assessment needs an admin", and the mark is not
+in the database.
+
+- **Changed:** when the signed-in person is a teacher, a save carries **marks
+  and nothing else**. Their copy of an assessment can differ from the database
+  in ways they never asked for — a field normalised on load, a default filled
+  in by a newer version — and any one of those turned their next mark entry
+  into a request the database was right to refuse. The refusal then landed on
+  the teacher, about a change they had not made. Postgres is still the
+  authority; the app simply no longer asks for what is not its to ask.
+  Anything dropped is named in the browser console, because a document
+  changing when nobody asked it to is worth knowing about.
+- **Fixed:** the message shown when *marks themselves* are refused began "Your
+  marks were saved, but…". A teacher reads the first clause, believes their
+  marking is safe, and closes the tab. It now says the marks were **not**
+  saved and who to ask.
+- **New:** `tests/browser/teacher-marking.test.mjs` — the whole path in one
+  test: an admin builds a paper through the setup screen, assigns a marker
+  through the marker list, the teacher signs in on their own machine, enters a
+  mark, and the admin opens the paper and sees it. Real browser, real
+  PostgreSQL, real policies. Twelve checks, including a teacher whose document
+  has drifted.
+  Everything underneath this already passed while the app itself did not work
+  for a teacher. That is what was missing.
+- **Fixed (test harness):** the stand-in PostgREST did not answer CORS
+  preflights, so a cross-origin browser blocked every request before it was
+  sent — which looks exactly like a permissions problem and is not one.
+
+## A page that says what is actually happening
+
+- **New:** `diagnose.html`, at `/diagnose.html` on the deployed site. It asks
+  the database the same questions the app asks, one at a time, and reports
+  exactly what comes back: whether the app knows where the database is,
+  whether the session is accepted, which school the account is linked to, what
+  that assessment actually contains in the database, and — the one that
+  matters — whether a write reaches it and can be read back. It writes a mark
+  into an empty cell and removes it again, so nothing is left behind.
+  There is a Copy button, and the report carries no pupil names and no marks.
+  Written after a second round of "it isn't saving" that could not be
+  reproduced here. Guessing twice is one time too many.

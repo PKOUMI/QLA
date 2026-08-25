@@ -302,10 +302,27 @@ export function isEmptyPlan(plan) {
 
 /* --- Errors a teacher can act on ----------------------------------------- */
 
-export function describeWriteError(error, what) {
+/**
+ * @param {Error} error
+ * @param {'marks'|'structure'|'create'} stage  what was being written
+ *
+ * The stage matters. Saying "your marks were saved, but..." when it was the
+ * marks that were refused is worse than saying nothing: a teacher reads the
+ * first clause, believes their marking is safe, and closes the tab.
+ */
+export function describeWriteError(error, stage) {
   const text = String(error?.message || '').toLowerCase();
-  if (error?.status === 403 || /row-level security|violates row-level/.test(text)) {
-    return `Your marks were saved, but ${what} needs an admin. Ask whoever set up this assessment to make the change.`;
+  const refused = error?.status === 403 || /row-level security|violates row-level/.test(text);
+
+  if (refused && stage === 'marks') {
+    return 'You are not on the list of people marking this paper, so these marks were NOT saved. '
+      + 'Ask an admin at your school to add you to it, then enter them again.';
+  }
+  if (refused && stage === 'create') {
+    return 'Only an admin can create an assessment. Nothing was saved.';
+  }
+  if (refused) {
+    return 'Your marks were saved. The rest of this assessment can only be changed by an admin.';
   }
   if (/foreign key/.test(text)) {
     return 'Some of this data refers to a pupil or question that is no longer on this paper. Reload the page to get the current version.';
@@ -330,9 +347,46 @@ async function inChunks(rows, run) {
 }
 
 /**
- * @param {{orgId: string, userId: string}} identity
+ * Strip everything a teacher is not allowed to write, leaving the marks.
+ *
+ * WHY THIS EXISTS, given that Postgres already refuses those writes:
+ *
+ * A teacher's document can end up differing from the database in ways they
+ * never asked for — a field normalised on load, a default filled in by a
+ * newer version of the app, a stray edit somewhere in the interface. Any one
+ * of those turns their next mark entry into a request the database is right
+ * to refuse, and the refusal lands on the teacher as though their marking had
+ * failed. It is the wrong person to tell, about a change they did not make.
+ *
+ * So the app does not ask. A teacher's save carries marks, because marks are
+ * the only thing a teacher is here to write. Postgres remains the authority;
+ * this only stops the app making requests it already knows are not its to
+ * make.
  */
-export function createSupabaseRepo({ orgId, userId }) {
+export function marksOnly(plan) {
+  const dropped = [];
+  const empty = { insert: [], update: [], remove: [] };
+
+  if (plan.assessment) dropped.push('assessment');
+  for (const key of ['questions', 'pupils', 'entries', 'sendLog']) {
+    const part = plan[key];
+    if (part.insert.length || part.update.length || part.remove.length) dropped.push(key);
+  }
+
+  return {
+    plan: {
+      marks: plan.marks,
+      assessment: null,
+      questions: empty, pupils: empty, entries: empty, sendLog: empty,
+    },
+    dropped,
+  };
+}
+
+/**
+ * @param {{orgId: string, userId: string, canManage?: () => boolean}} identity
+ */
+export function createSupabaseRepo({ orgId, userId, canManage = () => true }) {
   /** What we believe is in the database, per assessment. */
   const snapshots = new Map();
   const remember = (doc) => snapshots.set(doc.id, structuredClone(doc));
@@ -389,7 +443,21 @@ export function createSupabaseRepo({ orgId, userId }) {
     async save(doc) {
       reidentify(doc);
       const before = snapshots.get(doc.id) || null;
-      const plan = planWrites(before, doc, { orgId, userId });
+      let plan = planWrites(before, doc, { orgId, userId });
+
+      if (!canManage()) {
+        const trimmed = marksOnly(plan);
+        if (trimmed.dropped.length) {
+          // Not shown to the teacher — there is nothing for them to do about
+          // it — but left where a developer will find it if it keeps
+          // happening, because it means something is changing the document
+          // when nobody asked it to.
+          console.warn('Not sent: this teacher may only write marks. Dropped changes to:',
+            trimmed.dropped.join(', '));
+        }
+        plan = trimmed.plan;
+      }
+
       if (isEmptyPlan(plan)) return doc;
 
       const writeMarks = async () => {
@@ -457,25 +525,25 @@ export function createSupabaseRepo({ orgId, userId }) {
         try {
           await writeEverythingElse();
         } catch (error) {
-          throw new Error(describeWriteError(error, 'creating this assessment'));
+          throw new Error(describeWriteError(error, 'create'));
         }
         try {
           await writeMarks();
         } catch (error) {
-          throw new Error(describeWriteError(error, 'saving these marks'));
+          throw new Error(describeWriteError(error, 'marks'));
         }
       } else {
         try {
           await writeMarks();
         } catch (error) {
-          throw new Error(describeWriteError(error, 'saving these marks'));
+          throw new Error(describeWriteError(error, 'marks'));
         }
         try {
           await writeEverythingElse();
         } catch (error) {
           // The snapshot is deliberately NOT updated here. The next save will
           // work out the same outstanding changes and try them again.
-          throw new Error(describeWriteError(error, 'changing this assessment'));
+          throw new Error(describeWriteError(error, 'structure'));
         }
       }
 

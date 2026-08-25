@@ -1,0 +1,235 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>EveryPupil — connection check</title>
+<meta name="robots" content="noindex">
+<link rel="stylesheet" href="css/styles.css">
+<script src="config.js"></script>
+<style>
+  body { background: var(--canvas); }
+  .page { max-width: 820px; margin: 0 auto; padding: 32px 20px 80px; }
+  .step { display: flex; gap: 12px; align-items: flex-start; padding: 12px 0; border-bottom: 1px solid var(--line); }
+  .step:last-child { border-bottom: 0; }
+  .mark { flex: none; width: 74px; font-weight: 700; font-size: 12px; letter-spacing: .04em; padding-top: 2px; }
+  .mark.ok { color: var(--ok); }
+  .mark.bad { color: var(--bad); }
+  .mark.wait { color: var(--muted); }
+  .what { min-width: 0; }
+  .what strong { display: block; color: var(--ink); font-size: 14px; }
+  .what span { display: block; color: var(--body); font-size: 13px; margin-top: 2px; word-break: break-word; }
+  .what code { font-family: var(--mono); font-size: 12px; background: var(--panel); padding: 1px 5px; border-radius: 4px; }
+  textarea { width: 100%; height: 200px; font-family: var(--mono); font-size: 12px; padding: 12px;
+             border: 1px solid var(--line-strong); border-radius: var(--radius); }
+</style>
+</head>
+<body>
+<div class="page">
+  <h1>Connection check</h1>
+  <p class="hint" style="color:var(--muted);max-width:60ch">
+    This page asks the database the same questions the app asks, one at a time, and
+    reports exactly what comes back. Nothing here is changed permanently: the
+    write test puts a mark in an empty cell and then removes it again.
+  </p>
+
+  <div class="card" style="margin-top:20px">
+    <div class="card-body" id="steps"></div>
+  </div>
+
+  <div class="card" style="margin-top:18px">
+    <div class="card-head">
+      <h2>Report</h2>
+      <div class="spacer"></div>
+      <button class="btn btn-sm btn-primary" id="copy" type="button">Copy this report</button>
+      <p class="note-inline">Paste this back into the conversation. It contains no pupil names and no marks — only counts, and the exact wording of anything that failed.</p>
+    </div>
+    <div class="card-body"><textarea id="report" readonly></textarea></div>
+  </div>
+</div>
+
+<script type="module">
+import {
+  isConfigured, projectUrl, anonKey, currentSession, currentUser,
+  accessToken, rpc, selectRows, insertRows, deleteRows,
+} from './js/supabase.js';
+
+const stepsNode = document.getElementById('steps');
+const reportNode = document.getElementById('report');
+const lines = [];
+
+function step(title) {
+  const mark = document.createElement('div');
+  mark.className = 'mark wait';
+  mark.textContent = 'checking';
+  const what = document.createElement('div');
+  what.className = 'what';
+  const strong = document.createElement('strong');
+  strong.textContent = title;
+  const detail = document.createElement('span');
+  what.append(strong, detail);
+  const row = document.createElement('div');
+  row.className = 'step';
+  row.append(mark, what);
+  stepsNode.append(row);
+
+  return {
+    ok(text) { mark.className = 'mark ok'; mark.textContent = 'OK'; detail.textContent = text; lines.push(`OK    ${title}: ${text}`); },
+    bad(text) { mark.className = 'mark bad'; mark.textContent = 'PROBLEM'; detail.textContent = text; lines.push(`FAIL  ${title}: ${text}`); },
+    note(text) { mark.className = 'mark wait'; mark.textContent = '—'; detail.textContent = text; lines.push(`----  ${title}: ${text}`); },
+  };
+}
+
+const show = () => { reportNode.value = lines.join('\n'); };
+const describe = (error) => `${error?.status ? error.status + ' ' : ''}${error?.message || error}`;
+
+document.getElementById('copy').addEventListener('click', async () => {
+  try { await navigator.clipboard.writeText(reportNode.value); }
+  catch { reportNode.select(); }
+});
+
+async function run() {
+  lines.push(`EveryPupil connection check — ${new Date().toISOString()}`);
+  lines.push(`page: ${window.location.origin}`);
+
+  /* 1 --------------------------------------------------------------- */
+  const s1 = step('The app knows where the database is');
+  if (!isConfigured()) {
+    s1.bad('config.js has no supabaseUrl or supabaseAnonKey. The app is saving to this browser only — which is exactly what "nothing is stored" looks like.');
+    show();
+    return;
+  }
+  s1.ok(`${projectUrl()} · anon key ${anonKey().length} characters`);
+
+  /* 2 --------------------------------------------------------------- */
+  const s2 = step('You are signed in');
+  const session = currentSession();
+  const user = currentUser();
+  if (!session || !user) {
+    s2.bad('No session in this browser. Sign in to the app first, then reload this page.');
+    show();
+    return;
+  }
+  const secondsLeft = (session.expires_at || 0) - Math.floor(Date.now() / 1000);
+  s2.ok(`${user.email} · token expires in ${Math.round(secondsLeft / 60)} minutes`);
+
+  /* 3 --------------------------------------------------------------- */
+  const s3 = step('The database accepts your session');
+  let token = null;
+  try {
+    token = await accessToken();
+    if (!token) throw new Error('no usable token — it could not be refreshed');
+    s3.ok(`token accepted, ${token.length} characters`);
+  } catch (error) {
+    s3.bad(describe(error));
+    show();
+    return;
+  }
+
+  /* 4 --------------------------------------------------------------- */
+  const s4 = step('Your account is linked to a school');
+  let org = null;
+  try {
+    const rows = await rpc('claim_membership');
+    org = Array.isArray(rows) ? rows[0] : rows;
+    if (!org?.school_id) s4.bad('Signed in, but linked to no school, so everything reads as empty and nothing can be written.');
+    else s4.ok(`${org.school_name} · you are ${org.member_role}`);
+  } catch (error) {
+    s4.bad(describe(error));
+  }
+
+  /* 5 --------------------------------------------------------------- */
+  const s5 = step('Assessments you can see');
+  let assessments = [];
+  try {
+    assessments = await selectRows('assessments', { select: 'id,name,updated_at', order: 'updated_at.desc' });
+    if (!assessments.length) s5.note('None. If you have created one in the app, it never reached the database.');
+    else s5.ok(`${assessments.length} · most recent "${assessments[0].name}" last changed ${assessments[0].updated_at}`);
+  } catch (error) {
+    s5.bad(describe(error));
+  }
+
+  if (!assessments.length) { show(); return; }
+  const target = assessments[0];
+
+  /* 6 --------------------------------------------------------------- */
+  const s6 = step('What that assessment contains in the database');
+  let questions = [];
+  let entries = [];
+  let marks = [];
+  try {
+    [questions, entries, marks] = await Promise.all([
+      selectRows('questions', { select: 'id', eq: { assessment_id: target.id } }),
+      selectRows('assessment_pupils', { select: 'pupil_id', eq: { assessment_id: target.id } }),
+      selectRows('marks', { select: 'pupil_id,question_id,mark', eq: { assessment_id: target.id } }),
+    ]);
+    s6.ok(`${questions.length} questions · ${entries.length} pupils · ${marks.length} marks stored`);
+  } catch (error) {
+    s6.bad(describe(error));
+    show();
+    return;
+  }
+
+  /* 7 --------------------------------------------------------------- */
+  const s7 = step('Writing a mark, then removing it again');
+  const taken = new Set(marks.map((m) => `${m.pupil_id} ${m.question_id}`));
+  let blank = null;
+  for (const entry of entries) {
+    for (const question of questions) {
+      if (!taken.has(`${entry.pupil_id} ${question.id}`)) {
+        blank = { pupil_id: entry.pupil_id, question_id: question.id };
+        break;
+      }
+    }
+    if (blank) break;
+  }
+
+  if (!blank) {
+    s7.note('Every cell on this paper already has a mark, so there is no empty one to test with safely.');
+    show();
+    return;
+  }
+
+  try {
+    await insertRows('marks', [{ assessment_id: target.id, ...blank, mark: 1 }],
+      { upsert: true, onConflict: 'assessment_id,pupil_id,question_id' });
+  } catch (error) {
+    s7.bad(`the write was refused — ${describe(error)}`);
+    show();
+    return;
+  }
+
+  let readBack = [];
+  try {
+    readBack = await selectRows('marks', {
+      select: 'mark', eq: { assessment_id: target.id, pupil_id: blank.pupil_id, question_id: blank.question_id },
+    });
+  } catch (error) {
+    s7.bad(`written, but could not be read back — ${describe(error)}`);
+    show();
+    return;
+  }
+
+  if (!readBack.length) {
+    s7.bad('The write was accepted and the row is not there afterwards. That is the database silently discarding it — almost always a policy that allows the insert but hides the row.');
+  } else {
+    s7.ok(`written and read back as ${readBack[0].mark}`);
+  }
+
+  try {
+    await deleteRows('marks', { assessment_id: target.id, pupil_id: blank.pupil_id, question_id: blank.question_id });
+    step('Tidying up').ok('the test mark was removed, so the paper is as you left it');
+  } catch (error) {
+    step('Tidying up').bad(`could not remove the test mark — ${describe(error)}. One cell on "${target.name}" now has a 1 in it that was not there before.`);
+  }
+
+  show();
+}
+
+run().catch((error) => {
+  step('Unexpected').bad(describe(error));
+  show();
+});
+</script>
+</body>
+</html>

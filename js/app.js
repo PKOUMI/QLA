@@ -277,11 +277,14 @@ async function boot() {
   // a school is still deciding.
   if (isConfigured()) {
     state.session = await requireSignIn();
+    roles.setRole(state.session.org.role);
     setRepo(createSupabaseRepo({
       orgId: state.session.org.id,
       userId: state.session.user.id,
+      // Passed as a function, not a value: the repository is built once and
+      // must not hold a stale answer if the role is ever refreshed.
+      canManage: roles.canManage,
     }));
-    roles.setRole(state.session.org.role);
   }
 
   state.assessment = await loadCurrentAssessment({ canCreate: roles.canManage() });
