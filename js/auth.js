@@ -269,6 +269,7 @@ function askForCode(address, onVerified, onRestart) {
       resend,
       el('button', { class: 'auth-link', type: 'button', onclick: onRestart }, 'Use a different address')),
     el('p', { class: 'auth-note', text: 'If it has not arrived after a minute, check your junk folder — school filters are strict about mail from new senders.' }),
+    el('p', { class: 'auth-note', text: 'If the email asks you to confirm a link rather than showing a code, tell whoever set up EveryPupil at your school: the Confirm signup email template needs the code adding.' }),
   );
 
   showResendCountdown(resend);
@@ -336,9 +337,10 @@ function showAccountMenu(user, school, role, onSignOut) {
     el('div', { class: 'account-head' },
       el('span', { class: 'account-avatar big', 'aria-hidden': 'true', text: initials }),
       el('div', { class: 'account-who' },
-        el('strong', { title: user.email, text: user.email }),
-        el('span', { text: school || '' }))),
+        el('strong', { title: user.email, text: user.email }))),
     el('dl', { class: 'account-facts' },
+      el('dt', { text: 'School' }),
+      el('dd', { text: school || 'Not linked to a school' }),
       el('dt', { text: 'Role' }),
       el('dd', {}, el('span', { class: 'badge badge-brand', text: ROLE_NAMES[role] || role || 'Signed in' })),
       el('dt', { text: 'Can' }),

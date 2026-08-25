@@ -239,7 +239,10 @@ function renderBody(assessment, results) {
         value: mark === null ? '' : mark,
         inputmode: 'decimal',
         'aria-label': `${pupil.name || `Pupil ${rowIndex + 1}`}, question ${question.number}, out of ${question.maxMarks}`,
-        dataset: { row: rowIndex, col: colIndex },
+        // The pupil and question are on the element so that anything reading
+        // the grid — a test, a screen reader script — can tie a box to the
+        // cell it stores, without counting rows and columns.
+        dataset: { row: rowIndex, col: colIndex, pupil: pupil.id, question: question.id },
         oninput: (event) => onMarkInput(event, pupil, question, cell),
         onblur: (event) => onMarkBlur(event, pupil, question, cell),
         onkeydown: (event) => onMarkKey(event, rowIndex, colIndex),
@@ -306,26 +309,57 @@ function onMarkInput(event, pupil, question, cell) {
   input.setAttribute('aria-invalid', check.ok ? 'false' : 'true');
   input.title = check.error;
 
-  if (!check.ok) return; // invalid values never enter the data
-
-  update((a) => setMark(a, pupil.id, question.id, check.value), { rerender: false });
-  applyCellState(cell, check.value, question.maxMarks);
+  // An impossible mark clears the cell rather than leaving the previous one
+  // behind it. Otherwise the box says 33 while the data still says 3, and one
+  // of the two is going to surprise somebody later.
+  update((a) => setMark(a, pupil.id, question.id, check.ok ? check.value : null), { rerender: false });
+  applyCellState(cell, check.ok ? check.value : null, question.maxMarks);
   refreshRowTotals(pupil.id);
   refreshAverages();
+}
+
+/**
+ * What to say when a mark cannot be accepted. It names the number that was
+ * typed, because "maximum is 6" on its own leaves a teacher wondering which
+ * cell it is complaining about.
+ */
+function rejectionMessage(typed, question, error) {
+  const value = String(typed).trim();
+  const where = `question ${question.number}`;
+  if (Number(value) > question.maxMarks) {
+    return `${value} is more than the ${question.maxMarks} marks available for ${where}. `
+      + 'The box has been left blank — enter the mark again.';
+  }
+  return `${error} (${where}) The box has been left blank — enter the mark again.`;
 }
 
 function onMarkBlur(event, pupil, question, cell) {
   const input = event.target;
   const check = validateMark(input.value, question.maxMarks);
-  if (!check.ok) {
-    // Put the field back to the last value we accepted, and say why.
-    const stored = getMark(state.assessment, pupil.id, question.id);
-    input.value = stored === null ? '' : stored;
-    input.classList.remove('is-invalid');
-    input.setAttribute('aria-invalid', 'false');
-    applyCellState(cell, stored, question.maxMarks);
-    toast(check.error, 'warn', 3500);
-  }
+  if (check.ok) return;
+
+  /*
+   * LEAVE IT BLANK. Not corrected to the maximum, and not quietly put back to
+   * whatever was there before.
+   *
+   * Someone marking a 6-mark question who means 3 and types 33 must end up
+   * looking at an empty box. Any value the app chooses for them — the maximum,
+   * or the mark that was there a moment ago — looks exactly like a mark they
+   * entered themselves, and would go out to a child in a feedback email
+   * without anybody noticing. Blank is the one state the app already makes
+   * loud: an empty cell, counted under "unmarked questions", and no total or
+   * grade for that pupil until it is filled in.
+   */
+  const typed = input.value;
+  input.value = '';
+  input.classList.remove('is-invalid');
+  input.setAttribute('aria-invalid', 'false');
+  input.title = '';
+  update((a) => setMark(a, pupil.id, question.id, null), { rerender: false });
+  applyCellState(cell, null, question.maxMarks);
+  refreshRowTotals(pupil.id);
+  refreshAverages();
+  toast(rejectionMessage(typed, question, check.error), 'warn', 6000);
 }
 
 /** Arrow keys and Enter move around the grid, like a spreadsheet. */

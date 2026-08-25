@@ -377,3 +377,27 @@ The two jobs that still needed the SQL editor now have screens.
   fault and is almost always a migration nobody has run yet.
 - **Changed:** the app now says that in plain words instead of passing the
   database's phrasing through.
+
+## Marks, and three smaller things
+
+- **Changed:** a mark that cannot be right now leaves the box **blank**. It
+  used to put back whatever was there a moment before, which is worse than it
+  sounds: type 33 into a 6-mark question that already said 3, and you are
+  looking at a 3 you did not just enter. Any value the app picks — the maximum,
+  or the previous mark — is indistinguishable from one a teacher typed, and
+  would go out to a child in a feedback email. Blank is the one state the app
+  already makes loud.
+- The message now names the number typed and how many marks the question is
+  worth, rather than "Maximum for this question is 6" with no indication of
+  which cell is complaining.
+- **New:** `tests/browser/marksheet.test.mjs` — 18 checks in a real browser
+  against the 90-pupil sample, including that a zero is still stored as a zero
+  and a half mark still works.
+- **Changed:** the account menu lists the school on its own line.
+- **Removed:** "always 0" beside the U grade boundary.
+- **Docs:** the `{{ .Token }}` block goes in **Confirm signup** as well as
+  **Magic link**. A new colleague's first sign-in creates their account, so it
+  is the signup template they see — and if it has not been edited they get a
+  confirmation link that goes nowhere, then a working code on the second
+  attempt, which looks like an intermittent fault rather than a missing
+  template.

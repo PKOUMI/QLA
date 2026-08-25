@@ -268,7 +268,7 @@ function renderBoundaries(assessment) {
     grid.append(el('div', { class: 'boundary-row' },
       el('label', { class: 'boundary-grade', for: `boundary-${boundary.grade}` },
         boundary.grade,
-        isU ? el('span', { class: 'hint', text: ' always 0' }) : null),
+        null),
       el('input', {
         type: 'number', id: `boundary-${boundary.grade}`, min: '0', max: String(total || 1000), step: '1',
         class: 'num', value: boundary.minMark === null ? '' : boundary.minMark,

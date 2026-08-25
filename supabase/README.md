@@ -143,10 +143,24 @@ the code:
 
 Without `{{ .Token }}`, the email arrives with nothing to type in.
 
-**Paste it into two templates, not one.** A teacher signing in for the first
-time is a new account, so GoTrue sends **Confirm signup**; everybody after that
-gets **Magic Link**. Edit only one and either the first sign-in or every
-subsequent one arrives as a link nobody asked for.
+### Paste it into BOTH templates. This is the one people get wrong
+
+Authentication -> Emails has several templates. The app needs the block above
+in **two** of them:
+
+| Template | Who gets it |
+|---|---|
+| **Confirm signup** | Everybody's **first ever** sign-in — the account is being created |
+| **Magic link** | Every sign-in after that |
+
+Do only Magic link, and every new colleague's very first experience of the app
+is an email saying "Follow the link below to confirm this email address",
+whose link goes nowhere useful. Their second attempt then works perfectly,
+which makes it look like an intermittent fault rather than a missing template.
+
+You do not need to change anything in the app for this: verification asks for
+type `email`, which GoTrue treats as a catch-all and checks against both the
+signup confirmation token and the magic link token.
 
 The code may be six digits or eight — GoTrue's OTP length is a server setting
 and which value a project is created with has varied. The app takes anything
