@@ -7,8 +7,8 @@
 
 do $$
 declare
-  school_name  text := 'Your School Name';           -- EDIT ME
-  your_email   text := 'you@yourschool.sch.uk';      -- EDIT ME  (your work address)
+  school_name  text := 'Stockland Green School';           -- EDIT ME
+  your_email   text := 'p.koumi@stockgrn.bham.sch.uk';      -- EDIT ME  (your work address)
   school_id    uuid;
 begin
   select id into school_id from organisations where name = school_name;
