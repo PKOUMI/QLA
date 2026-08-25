@@ -225,6 +225,11 @@ await until(page, `document.querySelectorAll('.mark-input').length > 0`, 'the ma
 await sleep(600);
 
 check('the teacher can see the paper', await page.evaluate(`document.querySelectorAll('.mark-input').length >= 2`));
+check('and can see which paper it is, in the header',
+  /Biology Paper 1/.test(await page.evaluate(`document.querySelector('#btn-assessments').textContent`)),
+  await page.evaluate(`document.querySelector('#btn-assessments').textContent`));
+check('and on the marksheet heading',
+  /Biology Paper 1/.test(await page.evaluate(`document.querySelector('#marksheet-heading').textContent`)));
 
 const from = api.log.length;
 await page.evaluate(`(() => {
@@ -302,6 +307,9 @@ await sleep(500);
 const report = await page.evaluate(`document.querySelector('#report').value`);
 console.log(report.split('\n').map((l) => '    ' + l).join('\n'));
 check('every check passes on a working setup', !/^FAIL/m.test(report));
+check('it lists each assessment separately', /Assessment: Biology Paper 1/.test(report));
+check('and says when a mark was last entered', /last mark entered/.test(report));
+check('and which one the app would open', /The app would open/.test(report));
 check('it names the school', /Northgate High/.test(report));
 check('it proves a write reaches the database', /written and read back/.test(report));
 check('and it puts the test mark back', /as you left it/.test(report));

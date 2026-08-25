@@ -445,3 +445,17 @@ in the database.
   There is a Copy button, and the report carries no pupil names and no marks.
   Written after a second round of "it isn't saving" that could not be
   reproduced here. Guessing twice is one time too many.
+
+## Which paper am I on?
+
+The app never said. Two colleagues could be on two different assessments, each
+seeing an empty marksheet where the other saw marks, and reasonably conclude
+the app was losing work.
+
+- **Changed:** the header button now carries the **name of the open
+  assessment** instead of the word "Assessments", and clicking it still
+  switches. The marksheet heading reads "Marks — <name>".
+- **Changed:** the connection check lists **every** assessment separately, with
+  its question, pupil and mark counts, when a mark was last entered, and which
+  one the app would open. That is the question worth asking when marking
+  appears to have vanished.

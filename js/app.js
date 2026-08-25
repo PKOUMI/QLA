@@ -139,9 +139,31 @@ export function goTo(route) {
   window.scrollTo({ top: 0, behavior: 'instant' });
 }
 
+/**
+ * Show which assessment is open, in the header.
+ *
+ * Without this the app never says what you are looking at. Two colleagues can
+ * be on two different papers, each seeing an empty marksheet where the other
+ * sees marks, and conclude that the app is losing work. The button that
+ * switches assessment is the right place to say which one you are on.
+ */
+function showCurrentAssessment() {
+  const button = $('#btn-assessments');
+  if (!button) return;
+  const name = state.assessment?.exam?.name?.trim();
+  button.textContent = name ? shorten(name, 30) : 'Assessments';
+  button.title = name ? `${name} — click to switch assessment` : 'Saved assessments';
+
+  const heading = $('#marksheet-heading');
+  if (heading) heading.textContent = name ? `Marks — ${name}` : 'Marks';
+}
+
+const shorten = (text, limit) => (text.length > limit ? `${text.slice(0, limit - 1)}…` : text);
+
 /** Tick the steps that are complete, so progress is visible at a glance. */
 function updateStepStates() {
   const assessment = state.assessment;
+  showCurrentAssessment();
   const { bySection } = validateAssessment(assessment);
   const setupDone = bySection.exam.length === 0 && bySection.questions.length === 0
     && bySection.boundaries.length === 0 && bySection.pupils.length === 0;

@@ -92,6 +92,9 @@ a{color:var(--brand-600)}
 .step-sep{width:14px;height:1px;background:var(--line-strong);flex:none}
 
 .header-actions{display:flex;align-items:center;gap:8px;min-width:0;flex-shrink:0}
+/* The current assessment's name lives on this button, so it needs room to
+   shrink rather than pushing the header wider than the window. */
+#btn-assessments{max-width:min(30vw,260px);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:block}
 .save-state{font-size:12.5px;color:var(--muted);white-space:nowrap}
 .save-state.is-saving{color:var(--brand-600)}
 .save-state.is-error{color:var(--bad);font-weight:600}

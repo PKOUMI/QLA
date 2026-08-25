@@ -144,31 +144,44 @@ async function run() {
   try {
     assessments = await selectRows('assessments', { select: 'id,name,updated_at', order: 'updated_at.desc' });
     if (!assessments.length) s5.note('None. If you have created one in the app, it never reached the database.');
-    else s5.ok(`${assessments.length} · most recent "${assessments[0].name}" last changed ${assessments[0].updated_at}`);
+    else s5.ok(`${assessments.length}`);
   } catch (error) {
     s5.bad(describe(error));
   }
 
   if (!assessments.length) { show(); return; }
-  const target = assessments[0];
 
   /* 6 --------------------------------------------------------------- */
-  const s6 = step('What that assessment contains in the database');
-  let questions = [];
-  let entries = [];
-  let marks = [];
-  try {
-    [questions, entries, marks] = await Promise.all([
-      selectRows('questions', { select: 'id', eq: { assessment_id: target.id } }),
-      selectRows('assessment_pupils', { select: 'pupil_id', eq: { assessment_id: target.id } }),
-      selectRows('marks', { select: 'pupil_id,question_id,mark', eq: { assessment_id: target.id } }),
-    ]);
-    s6.ok(`${questions.length} questions · ${entries.length} pupils · ${marks.length} marks stored`);
-  } catch (error) {
-    s6.bad(describe(error));
-    show();
-    return;
+  /*
+   * Every one of them, with when a mark was last entered.
+   *
+   * This is the question that matters when somebody says marks have
+   * disappeared: the app opens whichever assessment was changed most recently,
+   * and each person's browser remembers its own. Two people can be looking at
+   * two different papers and each believe the other's marking has vanished.
+   */
+  let target = null;
+  for (const assessment of assessments) {
+    const label = `Assessment: ${assessment.name || 'Untitled'}`;
+    const s = step(label);
+    try {
+      const [questions, entries, marks] = await Promise.all([
+        selectRows('questions', { select: 'id', eq: { assessment_id: assessment.id } }),
+        selectRows('assessment_pupils', { select: 'pupil_id', eq: { assessment_id: assessment.id } }),
+        selectRows('marks', { select: 'pupil_id,question_id,mark,updated_at', eq: { assessment_id: assessment.id } }),
+      ]);
+      const latest = marks.map((m) => m.updated_at).sort().pop();
+      s.ok(`${questions.length} questions · ${entries.length} pupils · ${marks.length} marks`
+        + (latest ? ` · last mark entered ${latest}` : ' · no marks yet')
+        + ` · id ends ${assessment.id.slice(-6)}`);
+      if (!target) target = { assessment, questions, entries, marks };
+    } catch (error) {
+      s.bad(describe(error));
+    }
   }
+  if (!target) { show(); return; }
+  const { assessment: chosen, questions, entries, marks } = target;
+  lines.push(`----  The app would open: "${chosen.name}" (most recently changed)`);
 
   /* 7 --------------------------------------------------------------- */
   const s7 = step('Writing a mark, then removing it again');
@@ -191,7 +204,7 @@ async function run() {
   }
 
   try {
-    await insertRows('marks', [{ assessment_id: target.id, ...blank, mark: 1 }],
+    await insertRows('marks', [{ assessment_id: chosen.id, ...blank, mark: 1 }],
       { upsert: true, onConflict: 'assessment_id,pupil_id,question_id' });
   } catch (error) {
     s7.bad(`the write was refused — ${describe(error)}`);
@@ -202,7 +215,7 @@ async function run() {
   let readBack = [];
   try {
     readBack = await selectRows('marks', {
-      select: 'mark', eq: { assessment_id: target.id, pupil_id: blank.pupil_id, question_id: blank.question_id },
+      select: 'mark', eq: { assessment_id: chosen.id, pupil_id: blank.pupil_id, question_id: blank.question_id },
     });
   } catch (error) {
     s7.bad(`written, but could not be read back — ${describe(error)}`);
@@ -217,10 +230,10 @@ async function run() {
   }
 
   try {
-    await deleteRows('marks', { assessment_id: target.id, pupil_id: blank.pupil_id, question_id: blank.question_id });
+    await deleteRows('marks', { assessment_id: chosen.id, pupil_id: blank.pupil_id, question_id: blank.question_id });
     step('Tidying up').ok('the test mark was removed, so the paper is as you left it');
   } catch (error) {
-    step('Tidying up').bad(`could not remove the test mark — ${describe(error)}. One cell on "${target.name}" now has a 1 in it that was not there before.`);
+    step('Tidying up').bad(`could not remove the test mark — ${describe(error)}. One cell on "${chosen.name}" now has a 1 in it that was not there before.`);
   }
 
   show();
