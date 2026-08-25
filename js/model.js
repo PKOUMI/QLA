@@ -87,9 +87,7 @@ export function newAssessment(overrides = {}) {
       // while their parents deliberately do not (e.g. safeguarding).
       parentSelectedPupilIds: [],
     },
-    // Admin controls. `unlocked` is session state, not a saved secret.
     settings: {
-      lock: { enabled: false, pinHash: null, salt: null },
       analyse: {
         charts: {
           gradeDistribution: true,
@@ -186,7 +184,9 @@ export function migrate(raw) {
   // v1 -> v2: settings/emailText added, exam.className and exam.teacherName removed.
   const freshSettings = newAssessment().settings;
   doc.settings = {
-    lock: { ...freshSettings.lock, ...(raw.settings?.lock || {}) },
+    // v3 -> v4: the PIN lock is gone. Who may change what is decided by the
+    // signed-in person's role now, which is both stronger and one less thing
+    // for a department to have to remember.
     analyse: {
       ...freshSettings.analyse,
       ...(raw.settings?.analyse || {}),

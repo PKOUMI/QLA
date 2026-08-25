@@ -99,7 +99,7 @@ function customisePanel(assessment) {
         el('div', { class: 'check-row' },
           chartToggle('gradeDistribution', 'Grade distribution'),
           chartToggle('topicPerformance', 'Topic / AO performance'),
-          chartToggle('questionAverages', 'Question averages'),
+          chartToggle('questionAverages', 'Question breakdown'),
           chartToggle('markDistribution', 'Mark distribution'))),
       el('div', { class: 'customise-selects' },
         el('label', { class: 'field field-sm' },
@@ -162,24 +162,71 @@ function topicCard(assessment) {
   });
 }
 
+/**
+ * Questions: one card, not two.
+ *
+ * This used to be a bar list ("Question averages") sitting above a wide table
+ * ("Question breakdown") that repeated the same numbers with a few more
+ * columns. Reading it meant looking a question up twice. Now the bar carries
+ * the average, a band behind it carries the range the class scored, and the
+ * rest of the facts sit under each bar where that question already is.
+ *
+ * The table view keeps every column, because a table is still the right shape
+ * for scanning forty questions at once — and for a screen reader.
+ */
 function questionCard(assessment) {
   const stats = questionAverages(assessment);
+
   return chartCard({
     id: 'questions',
-    title: 'Question averages',
-    hint: 'Average marks achieved on each question, in paper order.',
+    title: 'Question breakdown',
+    hint: 'Every question in paper order, with the class average as a bar.',
     drawChart: () => meterList({
-      rows: stats.map((s) => ({
-        label: `Q${s.number}${s.topic ? ` · ${s.topic}` : ''}`,
-        display: formatMark(s.average),
-        value: s.average,
-        max: s.maxMarks,
-        sublabel: s.notMarked ? `${s.notMarked} not marked` : '',
-      })),
-      emptyMessage: 'Enter some marks to see question averages.',
+      rows: stats.map((stat) => {
+        const question = assessment.questions.find((q) => q.id === stat.questionId);
+        const facts = [];
+        if (stat.lowest !== null) facts.push({ label: 'Lowest', value: formatMark(stat.lowest) });
+        if (stat.highest !== null) facts.push({ label: 'Highest', value: formatMark(stat.highest) });
+        if (stat.count) {
+          facts.push({ label: 'Full marks', value: `${stat.scoredFull} of ${stat.count}` });
+          facts.push({ label: 'Scored nothing', value: `${stat.scoredZero} of ${stat.count}` });
+        }
+
+        return {
+          label: `Q${stat.number}${stat.topic ? ` · ${stat.topic}` : ''}`,
+          display: formatMark(stat.average),
+          value: stat.average,
+          max: stat.maxMarks,
+          low: stat.lowest,
+          high: stat.highest,
+          facts,
+          sublabel: stat.notMarked ? `${stat.notMarked} not marked` : '',
+          action: question && question.reteachUrl
+            ? el('a', {
+              href: question.reteachUrl, target: '_blank', rel: 'noopener noreferrer',
+              text: 'Reteach resource',
+            })
+            : null,
+        };
+      }),
+      emptyMessage: 'Enter some marks to see how the class did question by question.',
     }),
-    tableHeaders: ['Question', 'Topic', 'Average mark', 'Out of'],
-    tableRows: () => stats.map((s) => [`Q${s.number}`, s.topic || '—', formatMark(s.average), s.maxMarks]),
+    tableHeaders: ['Question', 'Topic / AO', 'Out of', 'Class average', 'Lowest', 'Highest', 'Full marks', 'Scored nothing', 'Not marked', 'Reteach'],
+    tableRows: () => stats.map((stat) => {
+      const question = assessment.questions.find((q) => q.id === stat.questionId);
+      return [
+        `Q${stat.number}`,
+        stat.topic || '—',
+        stat.maxMarks,
+        formatMark(stat.average),
+        stat.lowest === null ? '—' : formatMark(stat.lowest),
+        stat.highest === null ? '—' : formatMark(stat.highest),
+        stat.count ? stat.scoredFull : '—',
+        stat.count ? stat.scoredZero : '—',
+        stat.notMarked || '—',
+        question && question.reteachUrl ? question.reteachUrl : '—',
+      ];
+    }),
   });
 }
 
@@ -203,43 +250,6 @@ function distributionCard(assessment) {
         return [pupil ? pupil.name : '—', r.total, r.grade || '—'];
       }),
   });
-}
-
-/* --- Question table ------------------------------------------------------ */
-
-function questionTable(assessment) {
-  const stats = questionAverages(assessment);
-  const rows = stats.map((stat) => {
-    const question = assessment.questions.find((q) => q.id === stat.questionId);
-    return el('tr', {},
-      el('td', {}, el('strong', { text: `Q${stat.number}` })),
-      el('td', { text: stat.topic || '—' }),
-      el('td', { class: 'num', text: String(stat.maxMarks) }),
-      el('td', { class: 'num' }, el('strong', { text: formatMark(stat.average) })),
-      el('td', { class: 'num', text: stat.lowest === null ? '—' : formatMark(stat.lowest) }),
-      el('td', { class: 'num', text: stat.highest === null ? '—' : formatMark(stat.highest) }),
-      el('td', { class: 'num' }, stat.notMarked
-        ? el('span', { class: 'pill pill-warn', text: String(stat.notMarked) })
-        : el('span', { class: 'muted', text: '—' })),
-      el('td', {}, question && question.reteachUrl
-        ? el('a', { href: question.reteachUrl, target: '_blank', rel: 'noopener noreferrer', text: 'Resource' })
-        : el('span', { class: 'muted', text: '—' })),
-    );
-  });
-
-  return el('div', { class: 'table-wrap' },
-    el('table', { class: 'data-table' },
-      el('thead', {},
-        el('tr', {},
-          el('th', { text: 'Question' }),
-          el('th', { text: 'Topic / AO' }),
-          el('th', { class: 'num', text: 'Out of' }),
-          el('th', { class: 'num', text: 'Class average' }),
-          el('th', { class: 'num', text: 'Lowest' }),
-          el('th', { class: 'num', text: 'Highest' }),
-          el('th', { class: 'num', text: 'Not marked' }),
-          el('th', { text: 'Reteach' }))),
-      el('tbody', {}, rows)));
 }
 
 /* --- Render -------------------------------------------------------------- */
@@ -277,25 +287,28 @@ export function render(assessment) {
   if (incomplete > 0) {
     root.appendChild(el('div', { class: 'note note-warn' },
       el('strong', { text: `${plural(incomplete, 'paper')} not fully marked. ` }),
-      el('span', { text: 'Question averages below use every mark entered so far, but grade and mark distribution only count papers where every question has a mark.' })));
+      el('span', { text: 'The question breakdown below uses every mark entered so far, but grade and mark distribution only count papers where every question has a mark.' })));
   }
 
   root.appendChild(customisePanel(assessment));
 
-  root.appendChild(el('section', { class: 'card' },
-    el('h3', { text: 'Question breakdown' }),
-    el('p', { class: 'muted small', text: 'Every question on the paper with the class averages filled in.' }),
-    questionTable(assessment)));
-
   const prefs = assessment.settings.analyse;
+
+  // Full width, above the grid: forty question rows do not belong in a column
+  // half the width of the page.
+  if (prefs.charts.questionAverages) {
+    root.appendChild(el('div', { class: 'viz-wide' }, questionCard(assessment)));
+  }
+
   const cards = el('div', { class: 'viz-grid' });
   if (prefs.charts.gradeDistribution) cards.appendChild(gradeCard(assessment));
   if (prefs.charts.markDistribution) cards.appendChild(distributionCard(assessment));
   if (prefs.charts.topicPerformance) cards.appendChild(topicCard(assessment));
-  if (prefs.charts.questionAverages) cards.appendChild(questionCard(assessment));
   root.appendChild(cards);
 
-  if (!cards.childElementCount) {
+  // The question breakdown lives outside this grid, so "nothing is showing"
+  // has to account for it or the message appears while a card is on screen.
+  if (!cards.childElementCount && !prefs.charts.questionAverages) {
     root.appendChild(el('div', { class: 'empty' },
       el('h3', { text: 'All charts hidden' }),
       el('p', { class: 'muted', text: 'Use “Customise this page” above to turn charts back on.' })));

@@ -332,3 +332,24 @@ The two jobs that still needed the SQL editor now have screens.
   Sign out button as well as everything already in it, and pushed the page
   sideways. It now sheds the school name, then the step labels, then the email
   as the window narrows. Checked at five widths.
+
+## Three changes
+
+- **Removed:** the PIN lock. What somebody may change is decided by their role
+  now, which is stronger than a PIN a department shares and stops nobody. Both
+  lock bars, `js/lock.js` and `js/lockbar.js` are gone. Editing the feedback
+  wording follows the same rule as everything else: admins only.
+- **Changed:** the header carried a school name, an email address and a Sign
+  out button, and ran out of room. All three now live inside one round account
+  button in the corner, which also shows the role and what it allows.
+- **Changed:** the Analyse page had a "Question averages" bar list sitting
+  above a "Question breakdown" table repeating the same numbers. Reading it
+  meant looking a question up twice. One card now, full width, in the style of
+  the bar list, with lowest, highest, how many got full marks, how many scored
+  nothing, and the reteach link under each bar. The table view keeps every
+  column.
+- **New:** `questionAverages` counts how many pupils got full marks and how
+  many scored nothing. A first attempt drew the lowest-to-highest range as a
+  band behind each bar; on a real class of 90 it filled the whole track every
+  time, because somebody always scores nothing and somebody always gets full
+  marks. It looked like information and carried none, so it went.

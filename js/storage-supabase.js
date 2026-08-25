@@ -86,15 +86,12 @@ export function toAssessmentRow(doc, orgId, ownerId) {
     blank_policy: doc.exam.blankPolicy,
     grade_boundaries: doc.gradeBoundaries,
     email_text: doc.emailText,
-    lock_pin_hash: doc.settings.lock.pinHash,
-    lock_salt: doc.settings.lock.salt,
     // Everything with no column of its own. These are the app's own working
     // state — which charts are showing, who is ticked for feedback — not
     // things the database ever needs to query on.
     settings: {
       schemaVersion: doc.schemaVersion,
       teacherEmail: doc.exam.teacherEmail || '',
-      lockEnabled: !!doc.settings.lock.enabled,
       analyse: doc.settings.analyse,
       feedback: doc.feedback,
       pupilEmailText: doc.pupilEmailText,
@@ -221,14 +218,7 @@ export function fromRows({ assessment, questions, pupils, entries, marks, sendLo
     pupils: orderedPupils,
     marks: markMap,
     feedback: settings.feedback,
-    settings: {
-      lock: {
-        enabled: !!settings.lockEnabled,
-        pinHash: assessment.lock_pin_hash,
-        salt: assessment.lock_salt,
-      },
-      analyse: settings.analyse,
-    },
+    settings: { analyse: settings.analyse },
     emailText: assessment.email_text || {},
     pupilEmailText: settings.pupilEmailText || {},
     sendLog: [...sendLog]

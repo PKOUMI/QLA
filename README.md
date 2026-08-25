@@ -148,6 +148,11 @@ at once without overwriting each other.
 Anything already saved in a browser is brought across the first time it is
 saved to the database.
 
+## Who can do what
+
+Roles decide it, and Postgres enforces it. There is no PIN — a shared PIN is a
+password a department writes on a whiteboard.
+
 ## What this is not, yet
 
 An assessment loads when you open it and does not refresh by itself, so a

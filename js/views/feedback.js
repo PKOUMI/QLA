@@ -5,6 +5,7 @@
  * confirms the count. Every other action on this page is read-only.
  */
 
+import { canManage } from '../roles.js';
 import { buildPupilFeedback, pupilSendStatus } from '../feedback-engine.js';
 import { allResults, formatMark } from '../grades.js';
 import { validateAssessment } from '../validation.js';
@@ -12,8 +13,6 @@ import { renderFeedbackEmail, DEFAULT_EMAIL_TEXT } from '../../shared/email-temp
 import { newId } from '../model.js';
 import { toCsv } from '../csv.js';
 import { $, el, clear, toast, openModal, closeModal, confirmDialog, callout, plural, downloadFile } from '../ui.js';
-import { canEdit } from '../lock.js';
-import { renderLockBar, applyLockState } from '../lockbar.js';
 import { state, update } from '../app.js';
 import { sendFeedbackEmails, isConfigured, ApiNotConfiguredError } from '../api.js';
 
@@ -67,7 +66,6 @@ export function render(assessment) {
     blockerNode.append(callout('warn', 'Some set-up is incomplete', blockers.slice(0, 5)));
   }
 
-  renderLockBar($('#lockbar-feedback'), assessment, 'feedback');
 
   // On first visit, pre-select everyone who is ready. Pupils with unmarked
   // questions are deliberately left out until the teacher opts them in.
@@ -82,26 +80,6 @@ export function render(assessment) {
   updateCounts(assessment);
 
   // Last, so it can disable controls the code above has just rebuilt.
-  applyFeedbackLock(assessment);
-}
-
-/**
- * When the assessment is locked, the Feedback page is read-only: nobody can
- * change who receives feedback, reword the email, or send it. The preview
- * still opens, because looking at it harms nothing.
- */
-function applyFeedbackLock(assessment) {
-  const locked = applyLockState(
-    $('#view-feedback'),
-    assessment,
-    '#view-feedback .card input, #view-feedback .card button.btn',
-  );
-  // The preview button is the one control that stays live while locked.
-  const preview = $('#btn-preview-edit');
-  preview.disabled = false;
-  delete preview.dataset.lockedBy;
-  preview.textContent = locked ? 'Preview email' : 'Preview and edit email';
-  $('#btn-send').title = locked ? 'Enter the PIN to send feedback' : '';
 }
 
 /** The pupil whose real data fills the preview. */
@@ -299,7 +277,9 @@ function openPreview(pupil, scope = 'class') {
     return;
   }
 
-  const editable = canEdit(assessment);
+  // Wording is part of what goes out to a parent, so it is an admin's to
+  // change. A teacher can still open the preview and read it.
+  const editable = canManage();
   const perPupil = scope === 'pupil';
   const pupilName = data.pupilName || 'this pupil';
   let audience = 'pupil';
@@ -424,7 +404,7 @@ function openPreview(pupil, scope = 'class') {
         'Click any highlighted text on the email to change it. ',
         el('span', { class: 'ph-chip', text: 'Amelia' }),
         ' marks a detail filled in for each pupil — leave it in place and it stays personal.')
-      : el('p', { class: 'hint preview-tip', text: 'The assessment is locked, so the wording cannot be changed. Enter the PIN to edit it.' }),
+      : el('p', { class: 'hint preview-tip', text: 'Only an admin can change the wording of the feedback email.' }),
     status,
   );
 

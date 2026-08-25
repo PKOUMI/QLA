@@ -123,22 +123,30 @@ export function questionAverages(assessment) {
     let lowest = null;
     let highest = null;
     let notMarked = 0;
+    // How many got it completely right and completely wrong. In a class of 30
+    // the lowest mark is almost always 0 and the highest almost always full,
+    // so those two numbers say very little on their own — but "22 scored
+    // nothing on this question" is the sentence that changes Monday's lesson.
+    let scoredZero = 0;
+    let scoredFull = 0;
+
+    const tally = (mark) => {
+      sum += mark;
+      count += 1;
+      lowest = lowest === null ? mark : Math.min(lowest, mark);
+      highest = highest === null ? mark : Math.max(highest, mark);
+      if (mark === 0) scoredZero += 1;
+      if (Number.isFinite(question.maxMarks) && mark === question.maxMarks) scoredFull += 1;
+    };
 
     for (const pupil of assessment.pupils) {
       const mark = getMark(assessment, pupil.id, question.id);
       if (mark === null) {
         notMarked += 1;
-        if (assessment.exam.blankPolicy === 'zero') {
-          count += 1;
-          lowest = lowest === null ? 0 : Math.min(lowest, 0);
-          highest = highest === null ? 0 : Math.max(highest, 0);
-        }
+        if (assessment.exam.blankPolicy === 'zero') tally(0);
         continue;
       }
-      sum += mark;
-      count += 1;
-      lowest = lowest === null ? mark : Math.min(lowest, mark);
-      highest = highest === null ? mark : Math.max(highest, mark);
+      tally(mark);
     }
 
     const max = Number.isFinite(question.maxMarks) ? question.maxMarks : 0;
@@ -151,6 +159,8 @@ export function questionAverages(assessment) {
       lowest,
       highest,
       notMarked,
+      scoredZero,
+      scoredFull,
       count,
       maxMarks: max,
       proportion: average !== null && max > 0 ? average / max : null,

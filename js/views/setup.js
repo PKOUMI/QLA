@@ -6,7 +6,6 @@
  */
 
 import { newQuestion, newPupil, resizeQuestions, applyPaperType, pruneMarks, GRADE_SETS } from '../model.js';
-import { renderLockBar, applyLockState } from '../lockbar.js';
 import { totalPossible } from '../grades.js';
 import { validateAssessment, isValidUrl, isValidEmail } from '../validation.js';
 import { parsePupilCsv, pupilTemplateCsv } from '../csv.js';
@@ -125,8 +124,7 @@ export function render(assessment) {
   renderQuestions(assessment);
   renderBoundaries(assessment);
   renderPupils(assessment);
-  renderLockBar($('#lockbar'), assessment, 'setup');
-  applyLockToSetup(assessment);
+  fixUGrade(assessment);
   refresh(assessment);
 }
 
@@ -448,19 +446,10 @@ async function handleCsvFile(event) {
   });
 }
 
-/* --- Setup lock ---------------------------------------------------------- */
+/* --- The U boundary ------------------------------------------------------ */
 
-/**
- * The lock itself lives in js/lockbar.js because the Feedback page shows the
- * same bar and uses the same PIN. This view only says what Set up freezes.
- */
-
-/** Everything on Set up that must be frozen when the lock is on. */
-const LOCKABLE = '#view-setup input, #view-setup select, #view-setup textarea, #view-setup button.btn';
-
-function applyLockToSetup(assessment) {
-  applyLockState($('#view-setup'), assessment, LOCKABLE);
-  // U is always fixed at 0, lock or no lock.
+/** U is fixed at 0 so that every mark always receives a grade. */
+function fixUGrade(assessment) {
   const uGrade = assessment.gradeBoundaries[0]?.grade;
   const uInput = uGrade ? $(`#boundary-${uGrade}`) : null;
   if (uInput) uInput.disabled = true;

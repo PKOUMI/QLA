@@ -15,7 +15,6 @@ import {
 import { buildPupilFeedback, pupilSendStatus } from '../js/feedback-engine.js';
 import { validateMark, validateAssessment, isValidEmail, isValidUrl, csvSafeCell } from '../js/validation.js';
 import { parsePupilCsv, parseCsv, toCsv } from '../js/csv.js';
-import { buildLock, pinMatches, validatePin } from '../js/lock.js';
 import { renderFeedbackEmail, DEFAULT_EMAIL_TEXT } from '../shared/email-template.js';
 import { signInErrorMessage, normaliseEmail, looksLikeEmail } from '../js/auth.js';
 import { setRole, canManage } from '../js/roles.js';
@@ -802,44 +801,51 @@ test('clearing a pupil override returns them to the class wording', () => {
   assert.equal(mergedWording(a, 'p1').pupil.greeting, 'Hello {firstName},');
 });
 
-/* ============================== setup lock ============================== */
+/* --------------------------------------------------------------------------
+ * The PIN lock has gone: what a person may change is decided by their role
+ * now. Its tests went with it — see CHANGELOG.
+ * ------------------------------------------------------------------------ */
 
-// These are async because PIN hashing uses the Web Crypto API, so they run in
-// their own pass before the report is printed.
-async function asyncTest(name, fn) {
-  try { await fn(); passed += 1; process.stdout.write('.'); }
-  catch (error) { failed += 1; failures.push({ name, error }); process.stdout.write('F'); }
-}
+/* =========================== question breakdown ========================= */
 
-await asyncTest('the right PIN unlocks and a wrong one does not', async () => {
+test('full marks and scored nothing are counted per question', () => {
   const a = fixture();
-  a.settings.lock = await buildLock('4821');
-  assert.equal(await pinMatches(a, '4821'), true);
-  assert.equal(await pinMatches(a, '4822'), false);
-  assert.equal(await pinMatches(a, ''), false);
+  const pupils = [a.pupils[0], newPupil('B', 'b@example.com'), newPupil('C', 'c@example.com')];
+  a.pupils = pupils;
+  const q = a.questions[0];            // out of 5
+  setMark(a, pupils[0].id, q.id, 5);   // full marks
+  setMark(a, pupils[1].id, q.id, 0);   // nothing
+  setMark(a, pupils[2].id, q.id, 3);
+  const stat = questionAverages(a).find((s) => s.questionId === q.id);
+  assert.equal(stat.scoredFull, 1);
+  assert.equal(stat.scoredZero, 1);
+  assert.equal(stat.count, 3);
+  assert.equal(stat.lowest, 0);
+  assert.equal(stat.highest, 5);
 });
 
-await asyncTest('the PIN itself is never stored, only a salted hash', async () => {
+test('an unmarked question counts as neither zero nor full', () => {
   const a = fixture();
-  a.settings.lock = await buildLock('1234');
-  const serialised = JSON.stringify(a.settings.lock);
-  assert.equal(serialised.includes('1234'), false, 'the PIN must not be recoverable from the save file');
-  assert.ok(a.settings.lock.salt, 'a salt is stored');
-  assert.equal(a.settings.lock.pinHash.length, 64, 'SHA-256 hex digest');
+  a.pupils = [a.pupils[0], newPupil('B', 'b@example.com')];
+  const q = a.questions[0];
+  setMark(a, a.pupils[0].id, q.id, 5);
+  // the second pupil is left blank
+  const stat = questionAverages(a).find((s) => s.questionId === q.id);
+  assert.equal(stat.scoredZero, 0, 'blank is not a zero');
+  assert.equal(stat.scoredFull, 1);
+  assert.equal(stat.notMarked, 1);
+  assert.equal(stat.count, 1);
 });
 
-await asyncTest('the same PIN on two assessments produces different hashes', async () => {
-  const first = await buildLock('1234');
-  const second = await buildLock('1234');
-  assert.notEqual(first.pinHash, second.pinHash, 'salting must prevent hash reuse');
-});
-
-await asyncTest('PIN format is enforced', async () => {
-  assert.equal(validatePin('1234'), null);
-  assert.equal(validatePin('12345678'), null);
-  assert.ok(validatePin('123'), 'too short is rejected');
-  assert.ok(validatePin('12345a'), 'letters are rejected');
-  assert.ok(validatePin(''), 'empty is rejected');
+test('once blanks are declared zeros they count as scoring nothing', () => {
+  const a = fixture();
+  a.exam.blankPolicy = 'zero';
+  a.pupils = [a.pupils[0], newPupil('B', 'b@example.com')];
+  const q = a.questions[0];
+  setMark(a, a.pupils[0].id, q.id, 5);
+  const stat = questionAverages(a).find((s) => s.questionId === q.id);
+  assert.equal(stat.scoredZero, 1);
+  assert.equal(stat.count, 2);
 });
 
 /* ================================ roles ================================= */

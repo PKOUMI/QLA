@@ -371,21 +371,14 @@ tr.avg-row .avg-pct{font-size:10.5px;opacity:.75;font-variant-numeric:tabular-nu
 }
 
 /* --- Responsive --------------------------------------------------------- */
-/* The header is one row that never wraps, and signing in added three things
-   to it: the school, the address, and Sign out. Below these widths there is no
-   longer room for everything, so the least useful thing goes first. The step
-   numbers stay to the end — they are how you move around. */
-@media (max-width:1280px){
-  .who-school{display:none}
-}
+/* The header is one row that never wraps. The account is a single round
+   button whatever the width — the email and role live inside it — so the only
+   thing that has to give here is the step labels. */
 @media (max-width:1120px){
   .step-label{display:none}
   .step{padding:7px 9px}
   .steps{gap:2px}
   .brand-name small{display:none}
-}
-@media (max-width:980px){
-  .who-email{display:none}
 }
 @media (max-width:900px){
   .grid.cols-3,.grid.cols-4{grid-template-columns:repeat(2,minmax(0,1fr))}
@@ -406,26 +399,8 @@ tr.avg-row .avg-pct{font-size:10.5px;opacity:.75;font-variant-numeric:tabular-nu
 }
 
 /* ==========================================================================
-   Additions: setup lock, vertical boundaries, Analyse page and charts
+   Additions: vertical boundaries, Analyse page and charts
    ========================================================================== */
-
-/* --- Setup lock bar ----------------------------------------------------- */
-.lockbar{
-  display:flex;align-items:center;gap:14px;margin:0 0 18px;padding:12px 16px;
-  background:var(--surface);border:1px solid var(--line);border-left:3px solid var(--line-strong);
-  border-radius:var(--radius);box-shadow:var(--shadow-sm);
-}
-.lockbar.is-locked{border-left-color:var(--warn);background:var(--warn-bg);border-color:var(--warn-line)}
-.lockbar.is-armed{border-left-color:var(--ok)}
-.lockbar-ico{font-size:20px;line-height:1;flex:none}
-.lockbar-text{display:flex;flex-direction:column;gap:2px;min-width:0}
-.lockbar-text strong{color:var(--ink);font-size:14px}
-.lockbar .hint{font-size:12.5px;color:var(--muted)}
-
-/* A locked Setup still reads clearly — it is dimmed, not hidden. */
-.view.is-locked .card{opacity:.72}
-.view.is-locked input:disabled,
-.view.is-locked select:disabled{background:var(--panel);cursor:not-allowed}
 
 .field-error{color:var(--bad);font-size:13px;min-height:1em}
 
@@ -560,9 +535,18 @@ tr.avg-row .avg-pct{font-size:10.5px;opacity:.75;font-variant-numeric:tabular-nu
 }
 .meter-value{margin-left:auto;flex:none;font-size:13.5px;font-variant-numeric:tabular-nums;color:var(--ink)}
 .meter-outof{color:var(--muted);font-weight:500}
-.meter-track{height:9px;border-radius:5px;background:var(--viz-track);overflow:hidden}
-.meter-fill{height:100%;border-radius:5px;background:var(--viz-fill)}
+.meter-track{position:relative;height:9px;border-radius:5px;background:var(--viz-track);overflow:hidden}
+.meter-fill{position:relative;height:100%;border-radius:5px;background:var(--viz-fill)}
 .meter-sub{font-size:11.5px;color:var(--muted);padding-top:4px}
+
+.meter-facts{
+  display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;
+  padding-top:6px;font-size:11.5px;color:var(--muted);
+}
+.meter-fact .k{color:var(--faint)}
+.meter-fact .v{color:var(--body);font-weight:600}
+.meter-fact.is-warn{color:var(--warn)}
+.meter-facts a{margin-left:auto;font-size:11.5px}
 
 .data-table{width:100%;border-collapse:collapse;font-size:13.5px}
 .data-table th,.data-table td{padding:8px 10px;border-bottom:1px solid var(--line);text-align:left}
@@ -602,9 +586,6 @@ tr.avg-row .avg-pct{font-size:10.5px;opacity:.75;font-variant-numeric:tabular-nu
    explanation and the thing it explains look the same. */
 .ph-chip{background:rgba(79,70,229,.12);border-radius:3px;padding:0 4px;color:var(--brand-700);font-weight:600}
 .preview-frame{width:100%;border:0;background:var(--email-bg);flex:1 1 auto;min-height:56vh}
-
-/* Locked pages: the card contents recede, the lock bar does not. */
-.view.is-locked .lockbar{opacity:1}
 
 /* --- Marksheet: full-window mode ---------------------------------------- */
 /* Everything except the grid gets out of the way. The card becomes the page. */
@@ -720,21 +701,44 @@ body.is-signed-out .app-main{display:none}
 }
 .auth-link[disabled]{color:var(--muted);cursor:default;text-decoration:none}
 
-/* --- Who is signed in --------------------------------------------------- */
-.who{
-  display:flex;align-items:center;gap:10px;min-width:0;
-  padding-left:12px;margin-left:2px;border-left:1px solid var(--line);
+/* --- The account menu ---------------------------------------------------- */
+.who{position:relative;display:flex;align-items:center;margin-left:2px}
+
+.account-button{
+  display:flex;align-items:center;gap:6px;padding:4px 6px 4px 4px;
+  background:none;border:1px solid transparent;border-radius:999px;cursor:pointer;
 }
-.who-school{font-weight:600;color:var(--ink);font-size:13px;white-space:nowrap}
-.who-email{
-  color:var(--muted);font-size:12.5px;max-width:200px;
+.account-button:hover{background:var(--panel);border-color:var(--line)}
+.account-button[aria-expanded="true"]{background:var(--panel);border-color:var(--line-strong)}
+.account-avatar{
+  display:grid;place-items:center;width:28px;height:28px;border-radius:50%;
+  background:var(--brand-600);color:#fff;font-size:11px;font-weight:700;letter-spacing:.02em;
+}
+.account-avatar.big{width:40px;height:40px;font-size:14px}
+.account-caret{
+  width:0;height:0;border-left:4px solid transparent;border-right:4px solid transparent;
+  border-top:5px solid var(--muted);
+}
+
+.account-panel{
+  position:absolute;top:calc(100% + 8px);right:0;z-index:60;width:290px;
+  background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-lg);
+  box-shadow:var(--shadow);padding:16px;
+}
+.account-head{display:flex;align-items:center;gap:12px;margin-bottom:14px}
+.account-who{min-width:0}
+.account-who strong{
+  display:block;color:var(--ink);font-size:13.5px;
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
 }
+.account-who span{display:block;color:var(--muted);font-size:12.5px}
 
-
-/* Read-only notice for a teacher looking at an admin's area. */
-.role-note{margin:0 0 18px}
-[data-role-disabled]{cursor:not-allowed}
+.account-facts{
+  display:grid;grid-template-columns:auto 1fr;gap:6px 12px;margin:0 0 16px;
+  padding:12px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line);
+}
+.account-facts dt{color:var(--muted);font-size:12.5px}
+.account-facts dd{margin:0;color:var(--body);font-size:12.5px;line-height:1.45}
 
 /* --- Staff and markers -------------------------------------------------- */
 .staff-add{
@@ -759,3 +763,7 @@ body.is-signed-out .app-main{display:none}
 .marker-row small{display:block;color:var(--muted);font-size:12px}
 .marker-row.is-waiting{opacity:.6;cursor:default}
 .marker-row.is-waiting:hover{background:none;border-color:transparent}
+
+/* A card that runs the full width of the page rather than sitting in the grid. */
+.viz-wide{margin-bottom:18px}
+.viz-wide .viz-card{width:100%}

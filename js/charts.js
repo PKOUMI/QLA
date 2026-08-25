@@ -277,9 +277,18 @@ export function meterList({ rows, emptyMessage = 'Nothing to show yet.' }) {
   if (!rows.length) return el('p', { class: 'muted small', text: emptyMessage });
 
   return el('div', { class: 'meters' }, rows.map((row) => {
-    const proportion = row.max > 0 && row.value !== null
-      ? Math.max(0, Math.min(1, row.value / row.max)) : 0;
+    const clamp = (value) => Math.max(0, Math.min(1, value));
+    const proportion = row.max > 0 && row.value !== null ? clamp(row.value / row.max) : 0;
     const known = row.value !== null;
+
+    // There was a paler band here showing lowest-to-highest. On a real class
+    // it filled the whole track every time — with thirty pupils somebody
+    // always scores nothing and somebody always gets full marks — so it looked
+    // like information and carried none. The numbers that vary are in the
+    // facts row instead.
+    const describeRange = row.low !== null && row.low !== undefined
+      && row.high !== null && row.high !== undefined
+      ? `, lowest ${row.low}, highest ${row.high}` : '';
 
     return el('div', { class: 'meter' },
       el('div', { class: 'meter-head' },
@@ -291,10 +300,19 @@ export function meterList({ rows, emptyMessage = 'Nothing to show yet.' }) {
       el('div', {
         class: 'meter-track',
         role: 'img',
-        'aria-label': `${row.label}: ${known ? row.display : 'not marked'} out of ${row.max} marks`
-          + (row.sublabel ? `, ${row.sublabel}` : ''),
-      }, el('div', { class: 'meter-fill', style: `width:${(proportion * 100).toFixed(2)}%` })),
-      row.sublabel ? el('div', { class: 'meter-sub', text: row.sublabel }) : null,
+        'aria-label': `${row.label}: average ${known ? row.display : 'not marked'} out of ${row.max} marks`
+          + describeRange + (row.sublabel ? `, ${row.sublabel}` : ''),
+      },
+        el('div', { class: 'meter-fill', style: `width:${(proportion * 100).toFixed(2)}%` }),
+      ),
+      (row.facts && row.facts.length) || row.action || row.sublabel
+        ? el('div', { class: 'meter-facts' },
+          ...(row.facts || []).map((fact) => el('span', { class: 'meter-fact' },
+            el('span', { class: 'k', text: `${fact.label} ` }),
+            el('span', { class: 'v', text: String(fact.value) }))),
+          row.sublabel ? el('span', { class: 'meter-fact is-warn', text: row.sublabel }) : null,
+          row.action || null)
+        : null,
     );
   }));
 }

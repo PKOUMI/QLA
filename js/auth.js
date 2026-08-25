@@ -317,19 +317,76 @@ function showNotConfigured() {
   );
 }
 
-/* --- The header strip ---------------------------------------------------- */
+/* --- The account menu ---------------------------------------------------- */
 
-function showWhoIsSignedIn(user, school, onSignOut) {
+/**
+ * A single button in the corner. The email address and the role live inside
+ * it, because a header that shows everything at once is a header that runs out
+ * of room — which is exactly what happened when it did.
+ */
+function showAccountMenu(user, school, role, onSignOut) {
   const slot = $('#who');
   if (!slot) return;
   clear(slot);
   slot.hidden = false;
-  slot.append(
-    el('span', { class: 'who-school', text: school || '' }),
-    el('span', { class: 'who-email', title: user.email, text: user.email }),
-    el('button', { class: 'btn btn-sm btn-ghost', type: 'button', onclick: onSignOut }, 'Sign out'),
+
+  const initials = String(user.email || '?').trim().slice(0, 2).toUpperCase();
+
+  const panel = el('div', { class: 'account-panel', id: 'account-panel', hidden: true, role: 'menu' },
+    el('div', { class: 'account-head' },
+      el('span', { class: 'account-avatar big', 'aria-hidden': 'true', text: initials }),
+      el('div', { class: 'account-who' },
+        el('strong', { title: user.email, text: user.email }),
+        el('span', { text: school || '' }))),
+    el('dl', { class: 'account-facts' },
+      el('dt', { text: 'Role' }),
+      el('dd', {}, el('span', { class: 'badge badge-brand', text: ROLE_NAMES[role] || role || 'Signed in' })),
+      el('dt', { text: 'Can' }),
+      el('dd', { text: ROLE_SUMMARY[role] || '' }),
+    ),
+    el('button', { class: 'btn btn-block', type: 'button', onclick: onSignOut }, 'Sign out'),
   );
+
+  const button = el('button', {
+    class: 'account-button', type: 'button', id: 'btn-account',
+    'aria-haspopup': 'true', 'aria-expanded': 'false',
+    title: user.email,
+  },
+    el('span', { class: 'account-avatar', 'aria-hidden': 'true', text: initials }),
+    el('span', { class: 'visually-hidden', text: `Your account: ${user.email}` }),
+    el('span', { class: 'account-caret', 'aria-hidden': 'true' }),
+  );
+
+  const close = () => {
+    panel.hidden = true;
+    button.setAttribute('aria-expanded', 'false');
+    document.removeEventListener('click', onOutside, true);
+    document.removeEventListener('keydown', onKey);
+  };
+  const onOutside = (event) => { if (!slot.contains(event.target)) close(); };
+  const onKey = (event) => { if (event.key === 'Escape') { close(); button.focus(); } };
+
+  button.addEventListener('click', () => {
+    if (panel.hidden) {
+      panel.hidden = false;
+      button.setAttribute('aria-expanded', 'true');
+      // Capture phase, so a click on any control elsewhere closes this first.
+      document.addEventListener('click', onOutside, true);
+      document.addEventListener('keydown', onKey);
+    } else {
+      close();
+    }
+  });
+
+  slot.append(button, panel);
 }
+
+const ROLE_NAMES = { owner: 'Owner', admin: 'Admin', teacher: 'Teacher' };
+const ROLE_SUMMARY = {
+  owner: 'Set up assessments, enter marks, send feedback, and manage staff.',
+  admin: 'Set up assessments, enter marks, send feedback, and manage staff.',
+  teacher: 'Enter marks on the assessments you have been given.',
+};
 
 /* --- The one function the rest of the app calls -------------------------- */
 
@@ -359,7 +416,7 @@ export function requireSignIn() {
         // Once the app is running behind us, signing out means reloading:
         // views are already built from this teacher's data and re-showing the
         // gate over the top would leave it on screen underneath.
-        showWhoIsSignedIn(user, row.school_name, async () => {
+        showAccountMenu(user, row.school_name, row.member_role, async () => {
           await clearSession();
           window.location.reload();
         });
