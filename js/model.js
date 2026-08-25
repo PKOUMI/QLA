@@ -17,12 +17,31 @@ export const GRADE_SETS = {
 export const WWW_THRESHOLD = 0.80; // strictly greater than this
 export const EBI_THRESHOLD = 0.25; // strictly less than this
 
-let idCounter = 0;
-/** Short, collision-resistant-enough id. Replaced by a DB uuid later. */
-export function newId(prefix) {
-  idCounter += 1;
-  const rand = Math.random().toString(36).slice(2, 8);
-  return `${prefix}_${Date.now().toString(36)}${idCounter.toString(36)}${rand}`;
+/**
+ * A UUID, because these ids are the primary keys in the database too.
+ *
+ * Generating them here rather than letting Postgres do it means a question or
+ * a pupil has the same identity in the browser and in the database from the
+ * moment it is created — no round trip to find out what it was called, and
+ * marks can reference it before it has ever been saved.
+ *
+ * The `prefix` argument is ignored. It is kept so that older calls read the
+ * same, and because `newId('q')` says what it is making.
+ */
+export function newId(prefix) {                                    // eslint-disable-line no-unused-vars
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) return crypto.randomUUID();
+  // Only reached on an old browser or a page served over plain http.
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+    const r = Math.random() * 16 | 0;
+    return (c === 'x' ? r : ((r & 0x3) | 0x8)).toString(16);
+  });
+}
+
+/** Does this id belong in a uuid column? Documents saved before the database
+ *  existed used short ids like `q_lz3k1abc`, and must be remapped before they
+ *  can be stored. */
+export function isUuid(value) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(value || ''));
 }
 
 export function newQuestion(number = '', maxMarks = 1) {

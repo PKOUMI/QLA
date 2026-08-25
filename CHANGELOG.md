@@ -274,3 +274,61 @@ passwords, and nothing for an administrator to create by hand.
 - Every table now has a read policy the whole school passes and a write policy
   only the right role passes. Permissive policies OR together, so the read
   policy never grants a write.
+
+## Marks live in the database
+
+The work no longer sits in one browser. A marksheet started in a classroom can
+be finished in the staffroom a week later, on a different computer.
+
+- **New:** `js/storage-supabase.js`. Same four methods the rest of the app
+  already used, so no view changed.
+- **Saves a difference, not a document.** Each save works out what actually
+  changed and sends only that. A class of 90 on a 40-question paper is 3,600
+  marks; typing one number now sends one row. Verified: one changed mark, one
+  write.
+- **Two teachers marking the same paper no longer overwrite each other.**
+  Because only changed cells are sent, their edits merge.
+- **Marks are written before anything else**, so a teacher who touches
+  something an admin owns still keeps the marks they were entitled to enter.
+  On a first save the order reverses, because a mark cannot reference a paper
+  that does not exist yet.
+- **New:** `js/roles.js` — a teacher sees the setup and feedback pages as read
+  only, with a line saying who to ask. Not a permission: the permissions are in
+  Postgres either way. This just stops somebody filling in a form for ten
+  minutes before being told it was never theirs.
+- **Client ids are now UUIDs**, so a question has the same identity in the
+  browser and the database from the moment it is created.
+- Assessments already saved in a browser are given UUIDs on first save, marks
+  and feedback selections following along, rather than being stranded.
+- A teacher with nothing assigned is told so, instead of being shown an empty
+  form the database would refuse to save.
+- **New:** `tests/storage.test.mjs` — 23 checks against a real PostgreSQL with
+  the real policies applied, so "a teacher cannot change the paper" is answered
+  by Postgres rather than by a mock.
+
+## Staff, and who marks what
+
+The two jobs that still needed the SQL editor now have screens.
+
+- **New:** **Staff** in the header. Everyone at the school, what they may do,
+  and — the column that answers the question an admin actually has — whether
+  they have ever signed in, or are still sitting on an email they have not
+  opened.
+- **New:** **Who is marking this paper**, on the setup page. Tick the staff who
+  will enter marks. Saved the moment a box is ticked, like everything else
+  here; a screen with a Save button would be the one that loses work.
+- **New:** `supabase/migrations/0004_staff.sql`. Adding, changing and removing
+  staff go through database functions rather than table writes, because the
+  rules that matter are not per-row rules: a school must never be left without
+  an owner, an admin must not be able to demote the person who appointed them,
+  and you should not be able to remove yourself by accident. Each refusal is
+  written to be read by the person who tried.
+- Removing somebody takes them off every paper they were marking. Their marking
+  stays: the work belongs to the school, and removing a colleague should never
+  quietly delete a term of marks.
+- Someone invited but not yet signed in appears on the staff list, greyed out
+  in the marker list, because there is no account to attach to a paper yet.
+- **Fixed:** the header could not hold a school name, an email address and a
+  Sign out button as well as everything already in it, and pushed the page
+  sideways. It now sheds the school name, then the step labels, then the email
+  as the window narrows. Checked at five widths.

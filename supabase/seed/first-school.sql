@@ -30,6 +30,11 @@ begin
 end $$;
 
 -- ---------------------------------------------------------------------------
+-- You should not need what follows. Once you can sign in, the Staff button in
+-- the app adds colleagues, changes what they may do, and removes them — with
+-- guards this file has no way to apply. Keep reading only if you would rather
+-- paste a whole staff list in one go.
+--
 -- Adding the rest of your staff. One row each, addresses as they appear in
 -- your MIS. Case and spacing do not matter. Roles:
 --

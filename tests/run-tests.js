@@ -18,6 +18,7 @@ import { parsePupilCsv, parseCsv, toCsv } from '../js/csv.js';
 import { buildLock, pinMatches, validatePin } from '../js/lock.js';
 import { renderFeedbackEmail, DEFAULT_EMAIL_TEXT } from '../shared/email-template.js';
 import { signInErrorMessage, normaliseEmail, looksLikeEmail } from '../js/auth.js';
+import { setRole, canManage } from '../js/roles.js';
 
 let passed = 0;
 let failed = 0;
@@ -839,6 +840,25 @@ await asyncTest('PIN format is enforced', async () => {
   assert.ok(validatePin('123'), 'too short is rejected');
   assert.ok(validatePin('12345a'), 'letters are rejected');
   assert.ok(validatePin(''), 'empty is rejected');
+});
+
+/* ================================ roles ================================= */
+
+test('only an admin or an owner may change an assessment', () => {
+  setRole('teacher'); assert.equal(canManage(), false);
+  setRole('admin');   assert.equal(canManage(), true);
+  setRole('owner');   assert.equal(canManage(), true);
+});
+
+test('with no database there is no role, and nothing is locked off', () => {
+  setRole(null);
+  assert.equal(canManage(), true, 'the browser-only app must stay fully usable');
+});
+
+test('an unrecognised role is treated as the least privileged', () => {
+  setRole('visitor');
+  assert.equal(canManage(), false);
+  setRole(null);
 });
 
 /* ============================== signing in ============================== */

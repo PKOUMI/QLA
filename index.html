@@ -38,10 +38,12 @@
   </nav>
 
   <div class="header-actions">
-    <div class="who" id="who" hidden></div>
     <span class="save-state" id="save-state" role="status" aria-live="polite">Saved</span>
+    <button class="btn btn-sm btn-ghost" id="btn-staff" type="button" title="Staff at your school" hidden>Staff</button>
     <button class="btn btn-sm btn-ghost" id="btn-assessments" type="button" title="Saved assessments">Assessments</button>
     <button class="btn btn-sm btn-ghost" id="btn-settings" type="button" title="Email settings">Settings</button>
+    <!-- Who is signed in sits last, where an account always sits. -->
+    <div class="who" id="who" hidden></div>
   </div>
 </header>
 
@@ -175,6 +177,10 @@
     </div>
     <div class="card-foot"><div id="pupils-errors" style="flex:1"></div></div>
   </div>
+
+  <!-- Who is marking this paper. Filled in by js/markers.js, and empty when
+       the app is running without a database. -->
+  <div id="markers-card" hidden></div>
 
   <div class="view-nav">
     <div id="setup-summary" class="hint" style="color:var(--muted)"></div>
@@ -387,6 +393,11 @@
     'js/lock.js',
     'js/supabase.js',
     'js/auth.js',
+    'js/roles.js',
+    'js/storage-supabase.js',
+    'js/people.js',
+    'js/staff.js',
+    'js/markers.js',
     'js/lockbar.js',
     'js/charts.js',
     'js/views/setup.js',

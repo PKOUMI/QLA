@@ -11,6 +11,7 @@ Run the files in order. Each one is safe to run again.
 | `migrations/0001_schema.sql` | The eight tables and the security policies |
 | `migrations/0002_access.sql` | Who is allowed to sign in, and how they get linked to your school |
 | `migrations/0003_roles.sql` | What each role may do once they are in |
+| `migrations/0004_staff.sql` | Managing staff from inside the app instead of from here |
 | `seed/first-school.sql` | Creates your school and makes you the owner. Edit two lines first |
 | `tests/security.sql` | Proves the above. Seven rows, all PASS |
 
@@ -85,8 +86,17 @@ Open `seed/first-school.sql`, change the two lines marked `EDIT ME` to your
 school's name and your own work email address, and run it. That makes you the
 owner.
 
-The rest of the file has a block for adding colleagues — one row each, pasted
-from your staff list. Case and spare spaces do not matter; addresses are
+**That is the last time you need SQL for this.** Once you can sign in, the
+**Staff** button in the app does the rest: add a colleague, change what they
+may do, remove them, and see at a glance who has actually signed in and who is
+still sitting on an email they have not opened.
+
+The rules that protect you are in the database, not in the screen. A school can
+never be left without an owner, an admin cannot promote themselves past the
+person who appointed them, and you cannot remove yourself by accident.
+
+If you would rather bulk-load the whole staff list in one go, the rest of the
+seed file has a block for it — one row each, pasted from your staff list. Case and spare spaces do not matter; addresses are
 normalised on the way in. Roles:
 
 | Role | Can |
@@ -228,6 +238,22 @@ And `0003_roles.sql`:
 | **Unassigned** colleague runs `delete from marks` with no `where` | Nothing deleted |
 | Admin edits the paper, sends, marks, adds pupils | All allowed |
 | Signed out, reading assessments or marks | 0 rows |
+
+And `0004_staff.sql`:
+
+| Attempt | Result |
+|---|---|
+| Owner adds a colleague, address pasted with capitals and spaces | Added, stored lowercase |
+| Owner changes what a colleague may do | Allowed |
+| Owner demotes the only owner | Refused — the school would be left with nobody who can |
+| Owner removes themselves | Refused — ask another admin |
+| Admin promotes somebody to owner | Refused — only an owner can |
+| Admin demotes or removes the owner | Refused |
+| Admin adds an ordinary teacher | Allowed |
+| Teacher adds or removes staff | Refused |
+| Teacher views the staff list | Allowed — they work here |
+| Signed out, calling the staff list | No privilege at all |
+| Removing somebody | Taken off every paper they were marking; their marking stays with the school |
 
 ## A note on the free plan
 

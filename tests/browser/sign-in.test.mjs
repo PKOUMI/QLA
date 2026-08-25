@@ -142,6 +142,71 @@ check('it does not look like a rejection', /Almost there/.test(await text('#auth
 check('it says nothing is wrong with the account', /Nothing is wrong with your account/.test(await text('.auth-gate')));
 check('the app stays hidden', !(await visible('.app-main')));
 
+console.log('\n12. A teacher with nothing to mark yet');
+await page.evaluate(`localStorage.clear()`);
+await page.goto(APP);
+await until(page, `!!document.querySelector('#auth-gate')`, 'the sign-in screen');
+await type('#auth-email', 'a.teacher@northgate.sch.uk');
+await submit('.auth-form');
+await until(page, `/Check your email/.test(document.querySelector('#auth-title').textContent)`, 'the code screen');
+await paste('#auth-code', '12345678');
+await until(page, `!document.querySelector('#auth-gate')`, 'the gate to close');
+await sleep(600);
+const message = await page.evaluate(`document.querySelector('.app-main').textContent`);
+check('they are told nothing has been shared yet', /Nothing to mark yet/.test(message), message.slice(0, 80));
+check('and who will share it', /admin at your school/.test(message));
+check('they are not shown an empty form they cannot fill in',
+  !(await page.evaluate(`!!document.querySelector('#exam-name')`)));
+
+console.log('\n13. The Staff screen');
+await page.evaluate(`localStorage.clear()`);
+await page.goto(APP);
+await until(page, `!!document.querySelector('#auth-gate')`, 'the sign-in screen');
+await type('#auth-email', 'alice@northgate.sch.uk');
+await submit('.auth-form');
+await until(page, `/Check your email/.test(document.querySelector('#auth-title').textContent)`, 'the code screen');
+await paste('#auth-code', '12345678');
+await until(page, `!document.querySelector('#auth-gate')`, 'the gate to close');
+await sleep(800);
+
+check('an owner is offered the Staff screen', await visible('#btn-staff'));
+await page.evaluate(`document.querySelector('#btn-staff').click()`);
+await until(page, `document.querySelector('#modal-body') && /alice@northgate/.test(document.querySelector('#modal-body').textContent)`, 'the staff list');
+const staffText = await text('#modal-body');
+check('colleagues are listed', /a\.teacher@northgate\.sch\.uk/.test(staffText));
+check('somebody who has never signed in is flagged', /Not yet/.test(staffText));
+check('and the count says how many are waiting', /not signed in yet/.test(staffText));
+check('you cannot remove yourself from the screen',
+  await page.evaluate(`(() => {
+    const row = [...document.querySelectorAll('#modal-body tbody tr')].find(r => /alice@/.test(r.textContent));
+    return !row.querySelector('button');
+  })()`));
+check('but a colleague can be removed',
+  await page.evaluate(`(() => {
+    const row = [...document.querySelectorAll('#modal-body tbody tr')].find(r => /a\\.teacher@/.test(r.textContent));
+    return !!row.querySelector('button');
+  })()`));
+await page.evaluate(`document.querySelector('#modal-foot button').click()`);
+
+console.log('\n14. Who is marking this paper');
+await sleep(600);
+const markersText = await text('#markers-card');
+check('the card appears on the setup page', /Who is marking this paper/.test(markersText), markersText.slice(0, 60));
+check('staff can be ticked', await page.evaluate(`document.querySelectorAll('#markers-card input[type=checkbox]').length >= 2`));
+check('somebody who has never signed in cannot be assigned yet',
+  await page.evaluate(`!!document.querySelector('#markers-card .is-waiting input[disabled]')`));
+
+console.log('\n15. The header fits, now that it carries a school and a sign-out');
+for (const width of [1440, 1280, 1100, 960, 820]) {
+  await page.send('Emulation.setDeviceMetricsOverride', { width, height: 800, deviceScaleFactor: 1, mobile: false });
+  await sleep(200);
+  const overflow = await page.evaluate(`document.documentElement.scrollWidth - document.documentElement.clientWidth`);
+  const fits = await page.evaluate(`(() => { const h = document.querySelector('.app-header'); return h.scrollWidth <= h.clientWidth + 1; })()`);
+  check(`nothing spills off the page at ${width}px`, overflow <= 0, `${overflow}px of sideways scroll`);
+  check(`the header itself fits at ${width}px`, fits);
+}
+await page.send('Emulation.clearDeviceMetricsOverride');
+
 console.log(`\n${pass} passed, ${fail} failed`);
 page.close();
 stopAll();

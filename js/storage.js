@@ -74,19 +74,26 @@ export const localRepo = {
   },
 };
 
-/*
- * Later, this becomes:
+/**
+ * The repository the rest of the app uses.
  *
- * export const apiRepo = {
- *   async list()            { return http('GET',    '/v1/assessments'); },
- *   async get(id)           { return http('GET',   `/v1/assessments/${id}`); },
- *   async save(assessment)  { return http('PUT',   `/v1/assessments/${assessment.id}`, assessment); },
- *   async remove(id)        { return http('DELETE',`/v1/assessments/${id}`); },
- * };
+ * `let`, not `const`, on purpose: once a teacher has signed in, app.js swaps
+ * in the database-backed one. ES module bindings are live, so every file that
+ * imported `repo` sees the change without importing anything new.
  *
- * ...and the export below switches. No other file changes.
+ * It starts as localStorage so the app still works with no database
+ * configured — the public demo, and a school still making up its mind.
  */
-export const repo = localRepo;
+export let repo = localRepo;                                    // eslint-disable-line import/no-mutable-exports
+
+export function setRepo(next) {
+  repo = next;
+}
+
+/** Where the work is being kept, for anything that needs to explain itself. */
+export function isUsingDatabase() {
+  return repo !== localRepo;
+}
 
 /* --- Which assessment is open ------------------------------------------- */
 
@@ -101,13 +108,34 @@ export function setCurrentId(id) {
   } catch { /* storage blocked; the app still works for this session */ }
 }
 
-/** Load the open assessment, creating a blank one on first run. */
-export async function loadCurrentAssessment() {
+/**
+ * Load the assessment to open.
+ *
+ * @param {{canCreate?: boolean}} options
+ *
+ * `canCreate: false` matters once there is a database. A teacher may not
+ * create an assessment, so quietly making them a blank one — which is what
+ * this did on first run — would fail at the database and leave them looking at
+ * an error instead of an explanation. In that case this returns null and the
+ * caller says something useful.
+ */
+export async function loadCurrentAssessment({ canCreate = true } = {}) {
   const id = getCurrentId();
   if (id) {
     const found = await repo.get(id);
     if (found) return found;
   }
+
+  // Nothing remembered, or it has since been deleted: fall back to whatever
+  // this person most recently worked on.
+  const list = await repo.list();
+  if (list.length) {
+    const found = await repo.get(list[0].id);
+    if (found) { setCurrentId(found.id); return found; }
+  }
+
+  if (!canCreate) return null;
+
   const created = newAssessment();
   await repo.save(created);
   setCurrentId(created.id);

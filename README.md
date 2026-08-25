@@ -138,13 +138,23 @@ gets linked to their school.
 With no Supabase details in `config.js` the app skips all of that and runs
 entirely in the browser, which is what the public demo does.
 
+## Where the work is kept
+
+With Supabase configured, assessments, pupils and marks live in the database,
+so a marksheet started on one computer can be finished on another. Each save
+sends only what changed, which is what lets two teachers mark the same paper
+at once without overwriting each other.
+
+Anything already saved in a browser is brought across the first time it is
+saved to the database.
+
 ## What this is not, yet
 
-Marks are still saved **in the browser**, not in the database. Signing in
-identifies who you are; it does not yet move your work. Until it does, two
-things follow: a marksheet started on one computer cannot be finished on
-another, and signing out on a shared computer leaves that class's marks in
-that browser. Use your own machine until the storage step lands.
+An assessment loads when you open it and does not refresh by itself, so a
+colleague's marks entered in the last few minutes appear when you reload.
+
+Assigning who marks which paper is done in SQL for now; the screen for it
+comes next.
 
 No payments. **This is not GDPR-compliant software** and must not be described
 as such; ARCHITECTURE.md §6 lists what is needed before real schools use it.

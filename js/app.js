@@ -10,9 +10,13 @@
 
 import { newAssessment } from './model.js';
 import {
-  repo, setCurrentId, loadCurrentAssessment, getSettings, saveSettings,
+  repo, setRepo, setCurrentId, loadCurrentAssessment, getSettings, saveSettings,
   exportAssessmentJson, importAssessmentJson,
 } from './storage.js';
+import { createSupabaseRepo } from './storage-supabase.js';
+import * as roles from './roles.js';
+import { initStaffButton } from './staff.js';
+import * as markers from './markers.js';
 import { validateAssessment } from './validation.js';
 import { $, el, toast, openModal, closeModal, confirmDialog, debounce, downloadFile, readFileAsText, plural } from './ui.js';
 import * as setupView from './views/setup.js';
@@ -41,6 +45,18 @@ const VIEWS = {
 export function render() {
   VIEWS[state.route].render(state.assessment);
   updateStepStates();
+  // The views rebuild their tables on every render, so the read-only state has
+  // to be re-applied afterwards rather than once at start-up.
+  roles.apply();
+
+  // Who is marking this paper lives on the setup page and needs the network,
+  // so it renders itself and then re-applies the read-only state when it
+  // arrives. A failure here must not take the page down with it.
+  if (state.route === 'setup') {
+    markers.render(state.assessment, state.session)
+      .then(() => roles.apply())
+      .catch((error) => console.error('Could not show who is marking this paper', error));
+  }
 }
 
 /**
@@ -300,6 +316,19 @@ async function openAssessments() {
   openModal({ title: 'Saved assessments', body, wide: true, buttons: [{ label: 'Close' }] });
 }
 
+/* --- Nothing to show yet ------------------------------------------------- */
+
+function showNothingYet() {
+  document.querySelector('.app-main').replaceChildren(
+    el('section', { class: 'view is-active' },
+      el('div', { class: 'empty', style: 'margin-top:40px' },
+        el('span', { class: 'ico', 'aria-hidden': 'true', text: '📄' }),
+        el('h3', { text: 'Nothing to mark yet' }),
+        el('p', { text: 'No assessment has been shared with you. An admin at your school creates the assessment and chooses who marks it — once they have, it will appear here.' }),
+      )),
+  );
+}
+
 /* --- Boot ---------------------------------------------------------------- */
 
 async function boot() {
@@ -315,9 +344,21 @@ async function boot() {
   // a school is still deciding.
   if (isConfigured()) {
     state.session = await requireSignIn();
+    setRepo(createSupabaseRepo({
+      orgId: state.session.org.id,
+      userId: state.session.user.id,
+    }));
+    roles.setRole(state.session.org.role);
   }
 
-  state.assessment = await loadCurrentAssessment();
+  state.assessment = await loadCurrentAssessment({ canCreate: roles.canManage() });
+
+  // A teacher who has not been given anything to mark yet. Saying so is better
+  // than an empty form they are not allowed to fill in.
+  if (!state.assessment) {
+    showNothingYet();
+    return;
+  }
 
   setupView.init();
   marksheetView.init();
@@ -329,6 +370,7 @@ async function boot() {
     if (trigger) goTo(trigger.dataset.goto);
   });
 
+  initStaffButton(state.session);
   $('#btn-settings').addEventListener('click', openSettings);
   $('#btn-assessments').addEventListener('click', openAssessments);
 

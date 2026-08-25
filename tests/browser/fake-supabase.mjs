@@ -65,6 +65,34 @@ const server = http.createServer((req, res) => {
       return send(200, row ? [row] : []);
     }
 
+    // The staff list, so the Staff screen and the marker checkboxes have
+    // something to show. The rules behind these are tested for real against
+    // PostgreSQL in tests/storage.test.mjs.
+    if (p === '/rest/v1/rpc/school_staff') {
+      return send(200, globalThis.__staff || (globalThis.__staff = [
+        { user_id: 'user-1', email: 'alice@northgate.sch.uk', member_role: 'owner', signed_in: true, invited_at: null },
+        { user_id: 'user-2', email: 'a.teacher@northgate.sch.uk', member_role: 'teacher', signed_in: true, invited_at: null },
+        { user_id: null, email: 'not.been.in@northgate.sch.uk', member_role: 'teacher', signed_in: false, invited_at: null },
+      ]));
+    }
+    if (p === '/rest/v1/rpc/invite_staff') {
+      globalThis.__staff = (globalThis.__staff || []).concat([{
+        user_id: null, email: String(payload.addr || '').trim().toLowerCase(),
+        member_role: payload.new_role, signed_in: false, invited_at: null,
+      }]);
+      return send(200, []);
+    }
+    if (p.startsWith('/rest/v1/rpc/')) return send(200, []);
+
+    // Enough of PostgREST for the app to boot after signing in. This file is
+    // about the sign-in screen; the storage layer has its own test, against a
+    // real database, in tests/storage.test.mjs.
+    if (p.startsWith('/rest/v1/')) {
+      if (req.method === 'GET') return send(200, []);
+      if (req.method === 'DELETE') return send(204, {});
+      return send(201, Array.isArray(payload) ? payload : [payload]);
+    }
+
     // config.js points the app at this stub instead of the real project.
     if (p === '/config.js') {
       res.writeHead(200, { 'Content-Type': 'text/javascript' });

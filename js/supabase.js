@@ -208,15 +208,35 @@ export async function signOut() {
 
 const encode = (value) => encodeURIComponent(String(value));
 
-/**
- * @param {string} table
- * @param {object} options  { select, eq, order, limit, single }
- */
-export async function selectRows(table, { select = '*', eq = {}, order, limit, single = false } = {}) {
-  const params = [`select=${encode(select)}`];
+/** PostgREST wants a list as in.("a","b"), with quotes escaped. */
+function inList(values) {
+  const quoted = values.map((value) => `"${String(value).replace(/"/g, '\\"')}"`);
+  return `in.(${quoted.join(',')})`;
+}
+
+function filters({ eq = {}, inValues = {} }) {
+  const params = [];
   for (const [column, value] of Object.entries(eq)) {
     params.push(`${encode(column)}=eq.${encode(value)}`);
   }
+  for (const [column, values] of Object.entries(inValues)) {
+    // An empty list would mean "no filter", which would match everything —
+    // exactly the wrong answer for a delete.
+    if (!values.length) return null;
+    params.push(`${encode(column)}=${encode(inList(values))}`);
+  }
+  return params;
+}
+
+/**
+ * @param {string} table
+ * @param {object} options  { select, eq, in, order, limit, single }
+ */
+export async function selectRows(table, { select = '*', eq = {}, in: inValues = {}, order, limit, single = false } = {}) {
+  const where = filters({ eq, inValues });
+  if (where === null) return single ? null : [];
+
+  const params = [`select=${encode(select)}`, ...where];
   if (order) params.push(`order=${encode(order)}`);
   if (limit) params.push(`limit=${encode(limit)}`);
 
@@ -255,9 +275,19 @@ export async function updateRows(table, match, changes) {
   }) || [];
 }
 
-export async function deleteRows(table, match) {
-  const params = Object.entries(match).map(([c, v]) => `${encode(c)}=eq.${encode(v)}`);
-  await call(`/rest/v1/${encode(table)}?${params.join('&')}`, { method: 'DELETE' });
+/**
+ * @param {object} match      equality filters
+ * @param {object} matchIn    { column: [values] }
+ *
+ * A delete with no filter at all would empty the table for this school, so an
+ * empty `in` list returns without sending anything rather than becoming a
+ * request with no WHERE. Row Level Security would limit the damage to one
+ * school; that is not a reason to rely on it.
+ */
+export async function deleteRows(table, match = {}, matchIn = {}) {
+  const where = filters({ eq: match, inValues: matchIn });
+  if (where === null || where.length === 0) return;
+  await call(`/rest/v1/${encode(table)}?${where.join('&')}`, { method: 'DELETE' });
 }
 
 export { SupabaseError };
