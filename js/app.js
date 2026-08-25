@@ -10,7 +10,7 @@
 
 import { newAssessment } from './model.js';
 import {
-  repo, setRepo, setCurrentId, loadCurrentAssessment, getSettings, saveSettings,
+  repo, setRepo, setCurrentId, loadCurrentAssessment,
   exportAssessmentJson, importAssessmentJson,
 } from './storage.js';
 import { createSupabaseRepo } from './storage-supabase.js';
@@ -23,7 +23,6 @@ import * as setupView from './views/setup.js';
 import * as marksheetView from './views/marksheet.js';
 import * as analyseView from './views/analyse.js';
 import * as feedbackView from './views/feedback.js';
-import { checkHealth } from './api.js';
 import { requireSignIn } from './auth.js';
 import { isConfigured } from './supabase.js';
 
@@ -152,72 +151,6 @@ function updateStepStates() {
   document.querySelector('.step[data-goto="marksheet"]').classList.toggle('is-done', setupDone && anyMarks);
   document.querySelector('.step[data-goto="analyse"]').classList.toggle('is-done', setupDone && anyMarks);
   document.querySelector('.step[data-goto="feedback"]').classList.toggle('is-done', assessment.sendLog.length > 0);
-}
-
-/* --- Settings dialog ----------------------------------------------------- */
-
-function openSettings() {
-  const settings = getSettings();
-  const form = el('div', { class: 'grid', style: 'gap:16px' },
-    el('div', { class: 'callout callout-info' },
-      el('span', { class: 'ico', 'aria-hidden': 'true', text: 'ℹ️' }),
-      el('div', {},
-        el('strong', { text: 'These settings stay in this browser' }),
-        el('span', { text: 'They are not secrets. The email provider API key lives on the server and is never sent to your browser. See DEPLOYMENT.md for how to deploy the backend.' }),
-      )),
-    el('div', { class: 'field' },
-      el('label', { for: 'set-api-url', text: 'Email API address' }),
-      el('input', { type: 'url', id: 'set-api-url', value: settings.apiBaseUrl, placeholder: 'https://your-api.vercel.app' }),
-      el('span', { class: 'hint', text: 'The URL of your deployed backend, with no trailing slash. Leave blank to use the app without email.' })),
-    el('div', { class: 'field' },
-      el('label', { for: 'set-api-key', text: 'Shared access key' }),
-      el('input', { type: 'password', id: 'set-api-key', value: settings.apiKey, placeholder: 'Optional', autocomplete: 'off' }),
-      el('span', { class: 'hint', text: 'Must match APP_SHARED_KEY on the server. This stops strangers using your endpoint. It is not full authentication — anyone using this browser can read it.' })),
-    el('div', { id: 'health-result' }),
-  );
-
-  openModal({
-    title: 'Email settings',
-    body: form,
-    buttons: [
-      {
-        label: 'Test connection', class: 'left', close: false, onClick: async () => {
-          const target = $('#health-result');
-          target.textContent = 'Checking…';
-          saveSettings({ ...settings, apiBaseUrl: $('#set-api-url').value.trim(), apiKey: $('#set-api-key').value.trim() });
-          try {
-            const health = await checkHealth();
-            const detail = health.dryRun
-              ? `The server is in DRY_RUN mode: emails will be prepared and reported, but NOT delivered. Remove DRY_RUN to send for real.`
-              : health.emailConfigured
-                ? `Email provider configured. Sending from: ${health.fromAddress || 'not set — set FROM_EMAIL'}.`
-                : 'The server has no RESEND_API_KEY, so it cannot send email yet.';
-            target.replaceChildren(el('div', { class: `callout callout-${health.dryRun || !health.emailConfigured ? 'warn' : 'ok'}` },
-              el('span', { class: 'ico', text: health.dryRun || !health.emailConfigured ? '⚠️' : '✅' }),
-              el('div', {}, el('strong', { text: 'Backend reachable' }), el('span', { text: detail })),
-            ));
-          } catch (error) {
-            target.replaceChildren(el('div', { class: 'callout callout-bad' },
-              el('span', { class: 'ico', text: '⛔' }),
-              el('div', {}, el('strong', { text: 'Could not reach the backend' }), el('span', { text: error.message })),
-            ));
-          }
-        },
-      },
-      { label: 'Cancel' },
-      {
-        label: 'Save', class: 'btn-primary', onClick: () => {
-          saveSettings({
-            ...settings,
-            apiBaseUrl: $('#set-api-url').value.trim(),
-            apiKey: $('#set-api-key').value.trim(),
-          });
-          toast('Settings saved.', 'ok');
-          render();
-        },
-      },
-    ],
-  });
 }
 
 /* --- Assessments dialog -------------------------------------------------- */
@@ -371,7 +304,6 @@ async function boot() {
   });
 
   initStaffButton(state.session);
-  $('#btn-settings').addEventListener('click', openSettings);
   $('#btn-assessments').addEventListener('click', openAssessments);
 
   window.addEventListener('hashchange', () => {

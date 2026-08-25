@@ -353,3 +353,27 @@ The two jobs that still needed the SQL editor now have screens.
   band behind each bar; on a real class of 90 it filled the whole track every
   time, because somebody always scores nothing and somebody always gets full
   marks. It looked like information and carried none, so it went.
+
+## Sending needs no setting up
+
+- **Removed:** the Settings screen, and the shared access key with it. Both
+  were a hangover from before there were accounts: every teacher had to be
+  given an address and a secret to paste into their own browser, and a teacher
+  on a new laptop was a teacher who could not send.
+- **Changed:** the email service address is set once in `config.js` when the
+  app is deployed. Teachers are never asked for it.
+- **Changed:** the API now authenticates the caller by the session they already
+  have from signing in, checked against Supabase (`api/_lib/session.js`).
+  Access ends the moment somebody is removed from the school's staff list —
+  which a shared key could never do. Needs `SUPABASE_URL` and
+  `SUPABASE_ANON_KEY` on the API deployment.
+- If those variables are missing the server refuses every send. An
+  unconfigured door is a locked door, not an open one — the old shared-key
+  check treated "not configured" as "no key required".
+- **New:** `supabase/tests/installed.sql` — reports which migration files have
+  been run against a project and which have not, and refreshes PostgREST's
+  schema cache. Written after "Could not find the function
+  public.invite_staff(...) in the schema cache", which reads like an internal
+  fault and is almost always a migration nobody has run yet.
+- **Changed:** the app now says that in plain words instead of passing the
+  database's phrasing through.

@@ -21,8 +21,8 @@ export function applyCors(req, res) {
    * same-origin (the app served from this same domain), or a non-browser
    * caller like curl. Blocking those adds no security — a browser cannot be
    * tricked into omitting Origin on a cross-origin fetch, and anyone can call
-   * the endpoint directly regardless. The shared key is what actually gates
-   * this API; CORS only stops OTHER websites using your browser session.
+   * the endpoint directly regardless. The signed-in session is what actually
+   * gates this API; CORS only stops OTHER websites using your browser session.
    *
    * It did add confusion: serving the app from the API's own domain failed
    * with "origin not allowed" while naming no origin at all.
@@ -39,7 +39,7 @@ export function applyCors(req, res) {
   // Without this the browser hides Retry-After from cross-origin responses, so
   // the app cannot honour the wait a rate limiter asks for and backs off blindly.
   res.setHeader('Access-Control-Expose-Headers', 'Retry-After');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-QLA-Key');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
   res.setHeader('Access-Control-Max-Age', '86400');
 
   if (req.method === 'OPTIONS') {
@@ -57,36 +57,4 @@ export function applyCors(req, res) {
     // one distinction that matters when CORS is refusing you.
     allowedCount: list.length,
   };
-}
-
-/**
- * Shared-secret check. See ARCHITECTURE.md §6 — this is not real auth.
- *
- * Both sides are trimmed. Pasting a generated key into a dashboard field picks
- * up a trailing newline or space remarkably easily, and an invisible character
- * causing an authentication failure is a miserable thing to debug.
- */
-export function checkSharedKey(req) {
-  const expected = (process.env.APP_SHARED_KEY || '').trim();
-  const provided = String(req.headers['x-qla-key'] || '').trim();
-
-  if (!expected) return { ok: true, skipped: true, required: false }; // not configured = open
-
-  return {
-    ok: timingSafeEqual(provided, expected),
-    skipped: false,
-    required: true,
-    provided: provided.length > 0,
-    // The caller's own input, so echoing it reveals nothing they do not have.
-    // Enough to spot a truncated or empty paste at a glance.
-    providedLength: provided.length,
-  };
-}
-
-/** Constant-time compare so the key can't be guessed a character at a time. */
-function timingSafeEqual(a, b) {
-  if (a.length !== b.length) return false;
-  let diff = 0;
-  for (let i = 0; i < a.length; i += 1) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
-  return diff === 0;
 }

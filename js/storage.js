@@ -14,7 +14,6 @@ import { migrate, newAssessment } from './model.js';
 
 const KEY_DOCS = 'qla.assessments.v1';
 const KEY_CURRENT = 'qla.currentAssessmentId.v1';
-const KEY_SETTINGS = 'qla.settings.v1';
 
 function readAll() {
   try {
@@ -142,33 +141,12 @@ export async function loadCurrentAssessment({ canCreate = true } = {}) {
   return created;
 }
 
-/* --- App settings (API URL and key) -------------------------------------
- * These are per-teacher, per-browser, and are NOT secrets in the cryptographic
- * sense — see ARCHITECTURE.md §6. The shared key is a speed bump against a
- * stranger finding the endpoint, not authentication.
+/* --- There used to be per-browser settings here --------------------------
+ * The email service address and a shared key lived in localStorage, entered by
+ * each teacher through a Settings dialog. Both are gone: the address is
+ * deployed with the app in config.js, and who may send is decided by who is
+ * signed in. See js/api.js.
  * ---------------------------------------------------------------------- */
-
-export function getSettings() {
-  const defaults = {
-    apiBaseUrl: (window.QLA_CONFIG && window.QLA_CONFIG.apiBaseUrl) || '',
-    apiKey: '',
-    fromName: '',
-  };
-  try {
-    const raw = localStorage.getItem(KEY_SETTINGS);
-    return raw ? { ...defaults, ...JSON.parse(raw) } : defaults;
-  } catch {
-    return defaults;
-  }
-}
-
-export function saveSettings(settings) {
-  try {
-    localStorage.setItem(KEY_SETTINGS, JSON.stringify(settings));
-  } catch (error) {
-    console.error('Could not save settings', error);
-  }
-}
 
 /* --- Backup / restore ---------------------------------------------------
  * localStorage is not a backup. This gives the teacher a real file.

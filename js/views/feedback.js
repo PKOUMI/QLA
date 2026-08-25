@@ -499,8 +499,9 @@ function renderEmailSummary(assessment) {
 function renderApiStatus() {
   const node = clear($('#api-status'));
   if (isConfigured()) return;
-  node.append(callout('info', 'Email backend not configured',
-    'Everything on this page works except actually sending. Deploy the API (see DEPLOYMENT.md), then add its address under Settings. Nothing here pretends to send email that has not been sent.'));
+  node.append(callout('info', 'Email sending is not switched on for this site',
+    'Everything on this page works except actually sending. The address of the email service is set once in config.js when the app is deployed — see DEPLOYMENT.md. '
+    + 'Nothing here pretends to send email that has not been sent.'));
 }
 
 /* --- Sending ------------------------------------------------------------- */
@@ -544,8 +545,8 @@ async function handleSend() {
   // this fails they get a clear reason rather than a dialog that led nowhere.
   if (!isConfigured()) {
     clear($('#send-results')).append(callout('bad', 'Nothing was sent',
-      'No email backend is configured. Open Settings and enter the address of your deployed API — see DEPLOYMENT.md for how to deploy it.'));
-    toast('No email backend configured — nothing was sent.', 'bad', 8000);
+      'This copy of the app has no email service address in config.js. That is set once when the app is deployed, not by each teacher — see DEPLOYMENT.md.'));
+    toast('Email sending is not switched on for this site — nothing was sent.', 'bad', 8000);
     return;
   }
 

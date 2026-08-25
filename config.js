@@ -15,12 +15,13 @@ window.QLA_CONFIG = {
   supabaseAnonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpvcHVoaXJleXZnd3F2ZnpqYWZyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODc2MDAyMTQsImV4cCI6MjEwMzE3NjIxNH0.aIh-5TtRdFbTYpZnSR6hbGKB-qFtYNgIzDy8-MrbA2M',
 
   /**
-   * The address of your deployed backend, with no trailing slash.
-   * Leave it empty and the app runs fine — it just cannot send email.
+   * The address of the email service, with no trailing slash.
    *
-   * Examples:
-   *   'https://qla-api.vercel.app'
-   *   'https://api.yourdomain.co.uk'
+   * Set once, here, for everybody. No teacher is ever asked for it — they
+   * send using the session they already have from signing in, and the server
+   * checks that session with Supabase.
+   *
+   * Leave it empty and the app runs fine, it just cannot send email.
    */
   apiBaseUrl: 'https://api.everypupil.com',
 

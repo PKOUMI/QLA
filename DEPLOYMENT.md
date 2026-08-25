@@ -176,18 +176,20 @@ deliver. Step 7 covers switching to your own domain.
 | `FROM_EMAIL` | `onboarding@resend.dev` (for now) |
 | `FROM_NAME` | `Assessment Feedback` |
 | `ALLOWED_ORIGINS` | `https://YOURNAME.github.io` |
-| `APP_SHARED_KEY` | a long random string — see below |
+| `SUPABASE_URL` | your project URL, e.g. `https://abcd.supabase.co` |
+| `SUPABASE_ANON_KEY` | the same anon key as in `config.js` |
 | `RATE_LIMIT_PER_MINUTE` | `40` |
 | `MAX_EMAILS_PER_HOUR` | `5000` |
 
-   Generate the shared key with one of these:
+   `SUPABASE_URL` and `SUPABASE_ANON_KEY` are how the server checks that the
+   person sending is signed in. Both are public values — the anon key is
+   designed to sit in a browser — so there is no secret to protect here. If
+   they are missing, the server refuses every send rather than allowing them:
+   an unconfigured door is a locked door, not an open one.
 
-   ```bash
-   openssl rand -base64 32                 # macOS / Linux
-   ```
-   ```powershell
-   [Convert]::ToBase64String((1..32|%{Get-Random -Max 256}))   # Windows PowerShell
-   ```
+   There is no shared key any more. There used to be, and it was a poor idea:
+   one secret, typed into every teacher's browser by hand, that could not be
+   revoked without visiting every teacher again.
 
    `ALLOWED_ORIGINS` must be the **origin only** — scheme and host, no path and
    no trailing slash. `https://yourname.github.io/qla/` is wrong;
@@ -228,18 +230,21 @@ file that GitHub Pages serves. This is the whole reason the backend exists.
 
 ---
 
-## Step 5 — Connect the app to the backend
+## Step 5 — Tell the app where the email service is
 
-1. Open your GitHub Pages URL.
-2. Click **Settings** (top right of the app).
-3. **Email API address:** your Vercel URL, no trailing slash.
-4. **Shared access key:** the same `APP_SHARED_KEY` value.
-5. Click **Test connection**. You should see *Backend reachable*.
-6. Click **Save**.
+Edit `config.js` in your repository and set `apiBaseUrl` to your Vercel URL,
+with no trailing slash:
 
-To set the API address for everyone instead of per-browser, edit `config.js` in
-your repository and set `apiBaseUrl`. That file is public, so put the URL there —
-never the shared key.
+```js
+apiBaseUrl: 'https://api.everypupil.com',
+```
+
+That is the whole of it, and it is set **once for everybody**. No teacher is
+ever asked for an address or a key: they send using the session they already
+have from signing in, and the server checks that session with Supabase.
+
+There is no Settings screen. There used to be, and every teacher on a new
+laptop was a teacher who could not send until somebody talked them through it.
 
 ---
 
@@ -309,8 +314,10 @@ land silently in quarantine and look like a broken product.
 
 | Symptom | Cause | Fix |
 |---|---|---|
-| App says "Could not reach the email backend" | `ALLOWED_ORIGINS` wrong | Must match your Pages origin exactly, no trailing slash. Redeploy after changing. |
-| `401 Invalid or missing access key` | Key mismatch | The app's Settings key must equal `APP_SHARED_KEY`. |
+| App says "Could not reach the email service" | `ALLOWED_ORIGINS` wrong | Must match your Pages origin exactly, no trailing slash. Redeploy after changing. |
+| App says "Email sending is not switched on for this site" | `apiBaseUrl` empty | Set it in `config.js` and redeploy the app. |
+| `Your sign-in has expired` | The session was not accepted | Reload the page and sign in again. If it persists, check `SUPABASE_URL` and `SUPABASE_ANON_KEY` on the API match your project. |
+| `This server cannot check who is signed in` | `SUPABASE_URL` / `SUPABASE_ANON_KEY` missing | Add both in Vercel, then **redeploy**. |
 | `503 email provider is not configured` | `RESEND_API_KEY` missing | Add it in Vercel, then **redeploy** — env changes need a new deployment. |
 | Resend log says "not allowed" | Using `onboarding@resend.dev` to a third party | Expected. Verify your own domain (step 7). |
 | Nothing in the log at all | Request never arrived | Vercel → your project → Logs. |
@@ -456,7 +463,9 @@ Feedback page, and confirm the count in the dialog matches what you expect.
 - [ ] Own domain verified in Resend, with SPF, DKIM **and** DMARC
 - [ ] `FROM_EMAIL` on your own domain
 - [ ] `ALLOWED_ORIGINS` lists only your own sites
-- [ ] `APP_SHARED_KEY` set and not the example value
+- [ ] `SUPABASE_URL` and `SUPABASE_ANON_KEY` set on the API, and it reports
+      `signInCheckConfigured: true` at `/api/health`
+- [ ] `apiBaseUrl` set in `config.js`
 - [ ] `DRY_RUN` **removed** from the environment
 - [ ] Test email received in a real inbox, not spam
 - [ ] Sent yourself a full-class dry run with your own address duplicated

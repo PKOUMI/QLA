@@ -7,34 +7,51 @@
  * anything enforced only in a browser is a suggestion, not a rule.
  */
 
-import { getSettings } from './storage.js';
+import { accessToken } from './supabase.js';
 
 export class ApiNotConfiguredError extends Error {}
 
+/**
+ * Where the email service lives. This comes from config.js, deployed with the
+ * app — not from a Settings screen.
+ *
+ * It used to be per-browser, which meant every teacher had to be told an
+ * address and a secret key before they could send anything, and a teacher on a
+ * new laptop was a teacher who could not send. Nothing here is private: the
+ * address is public, and who may use it is decided by whether they are signed
+ * in.
+ */
+function configured() {
+  return String((typeof window !== 'undefined' && window.QLA_CONFIG?.apiBaseUrl) || '')
+    .trim().replace(/\/+$/, '');
+}
+
 function baseUrl() {
-  const url = (getSettings().apiBaseUrl || '').trim().replace(/\/$/, '');
+  const url = configured();
   if (!url) {
     throw new ApiNotConfiguredError(
-      'No email backend is configured yet. Open Settings and enter the address of your deployed API.',
+      'This copy of the app has no email service address in config.js, so it cannot send feedback. See DEPLOYMENT.md.',
     );
   }
   return url;
 }
 
 export function isConfigured() {
-  return Boolean((getSettings().apiBaseUrl || '').trim());
+  return Boolean(configured());
 }
 
 async function request(path, { method = 'POST', body, timeoutMs = 45000 } = {}) {
-  const settings = getSettings();
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
+  // The session the teacher already has from signing in. The server checks it
+  // with Supabase, so there is no key for anybody to copy, lose, or leak.
+  const token = await accessToken();
   try {
     const response = await fetch(`${baseUrl()}${path}`, {
       method,
       headers: {
         'Content-Type': 'application/json',
-        ...(settings.apiKey ? { 'X-QLA-Key': settings.apiKey } : {}),
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
       body: body ? JSON.stringify(body) : undefined,
       signal: controller.signal,
@@ -62,7 +79,7 @@ async function request(path, { method = 'POST', body, timeoutMs = 45000 } = {}) 
     }
     if (error instanceof TypeError) {
       // fetch throws TypeError for network failure and for blocked CORS.
-      const networkError = new Error('Could not reach the email backend. Check the API address in Settings, that it is deployed, and that this site is on its allowed-origins list.');
+      const networkError = new Error('Could not reach the email service. It may be down, or this site may not be on its allowed-origins list. Nothing was sent.');
       networkError.retryable = true;
       throw networkError;
     }

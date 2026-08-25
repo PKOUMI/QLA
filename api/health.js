@@ -1,12 +1,13 @@
 /**
  * GET /api/health
  *
- * Lets the app's Settings dialog tell the teacher whether the backend is
- * reachable and configured, without exposing anything sensitive.
- * It reports WHETHER a key is set, never the key itself.
+ * Says whether this deployment can send email and whether it can check who is
+ * signed in. Nothing sensitive: it reports whether things are configured,
+ * never what they are set to.
  */
 
-import { applyCors, checkSharedKey } from './_lib/cors.js';
+import { applyCors } from './_lib/cors.js';
+import { sessionConfigured, verifySession } from './_lib/session.js';
 import { mailerStatus } from './_lib/mailer.js';
 
 export default async function handler(req, res) {
@@ -28,10 +29,10 @@ export default async function handler(req, res) {
 
   const status = mailerStatus();
 
-  // Check the key here too, and REPORT rather than reject. A health check that
-  // passes while sending fails on authentication is worse than no health check:
-  // it tells you everything is ready when it is not.
-  const key = checkSharedKey(req);
+  // Check the session here too, and REPORT rather than reject. A health check
+  // that passes while sending fails on authentication is worse than no health
+  // check: it says everything is ready when it is not.
+  const session = await verifySession(req);
 
   return res.status(200).json({
     ok: true,
@@ -39,9 +40,8 @@ export default async function handler(req, res) {
     emailConfigured: status.emailConfigured,
     fromAddress: status.fromAddress,   // safe: it is the public sender address
     dryRun: status.dryRun,
-    sharedKeyRequired: key.required === true,
-    sharedKeyProvided: key.provided === true,
-    sharedKeyValid: key.required ? key.ok : null,
-    sharedKeyProvidedLength: key.providedLength ?? 0,
+    signInCheckConfigured: sessionConfigured(),
+    signedInAs: session.ok ? session.user.email : null,
+    sessionProblem: session.ok ? null : session.reason,
   });
 }

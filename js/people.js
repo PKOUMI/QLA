@@ -41,8 +41,17 @@ export async function listStaff() {
  * with a lot of machinery around them. The message inside was written to be
  * read by the person who tried, so dig it out and let it through.
  */
-function readable(error) {
+export function describePeopleError(error) {
   const message = String(error?.message || '');
+
+  // PostgREST reports a function it has never heard of as missing "in the
+  // schema cache", which reads like an internal problem and is almost always
+  // a migration that has not been run.
+  if (/schema cache/i.test(message)) {
+    const name = (/function public\.([a-z_]+)/i.exec(message) || [])[1] || 'that function';
+    return `Your database does not have ${name} yet. Run supabase/tests/installed.sql in the Supabase SQL Editor — it says which migration files are missing and refreshes the cache.`;
+  }
+
   const cleaned = message
     .replace(/^ERROR:\s*/i, '')
     .replace(/\s*CONTEXT:.*$/is, '')
@@ -55,7 +64,7 @@ async function callGuarded(name, args) {
   try {
     return await rpc(name, args);
   } catch (error) {
-    throw new Error(readable(error));
+    throw new Error(describePeopleError(error));
   }
 }
 

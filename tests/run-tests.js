@@ -18,6 +18,8 @@ import { parsePupilCsv, parseCsv, toCsv } from '../js/csv.js';
 import { renderFeedbackEmail, DEFAULT_EMAIL_TEXT } from '../shared/email-template.js';
 import { signInErrorMessage, normaliseEmail, looksLikeEmail } from '../js/auth.js';
 import { setRole, canManage } from '../js/roles.js';
+import { describePeopleError } from '../js/people.js';
+import { verifySession, describeSessionFailure, sessionConfigured } from '../api/_lib/session.js';
 
 let passed = 0;
 let failed = 0;
@@ -25,6 +27,12 @@ const failures = [];
 
 function test(name, fn) {
   try { fn(); passed += 1; process.stdout.write('.'); }
+  catch (error) { failed += 1; failures.push({ name, error }); process.stdout.write('F'); }
+}
+
+/** For anything that has to await — session checks, hashing. */
+async function asyncTest(name, fn) {
+  try { await fn(); passed += 1; process.stdout.write('.'); }
   catch (error) { failed += 1; failures.push({ name, error }); process.stdout.write('F'); }
 }
 
@@ -866,6 +874,92 @@ test('an unrecognised role is treated as the least privileged', () => {
   assert.equal(canManage(), false);
   setRole(null);
 });
+
+/* ========================= telling people what broke ===================== */
+
+test('a missing migration is reported as a missing migration, not a cache problem', () => {
+  const error = new Error('Could not find the function public.invite_staff(addr, new_role) in the schema cache');
+  const message = describePeopleError(error);
+  assert.match(message, /does not have invite_staff yet/);
+  assert.match(message, /installed\.sql/);
+});
+
+test('a refusal written for a teacher reaches them intact', () => {
+  const error = new Error('ERROR: This is the only owner. Make somebody else an owner first. CONTEXT: PL/pgSQL function set_staff_role(text,text) line 24');
+  const message = describePeopleError(error);
+  assert.equal(message, 'This is the only owner. Make somebody else an owner first.');
+  assert.doesNotMatch(message, /CONTEXT|PL\/pgSQL/);
+});
+
+/* ===================== who may use the email service ==================== */
+
+const withFetch = async (impl, run) => {
+  const original = globalThis.fetch;
+  globalThis.fetch = impl;
+  try { return await run(); } finally { globalThis.fetch = original; }
+};
+
+const withEnv = async (vars, run) => {
+  const saved = { ...process.env };
+  Object.assign(process.env, vars);
+  try { return await run(); } finally { process.env = saved; }
+};
+
+await (async () => {
+  await asyncTest('a request with no session is refused', async () => {
+    await withEnv({ SUPABASE_URL: 'https://x.supabase.co', SUPABASE_ANON_KEY: 'anon' }, async () => {
+      const result = await verifySession({ headers: {} });
+      assert.equal(result.ok, false);
+      assert.equal(result.reason, 'no-token');
+      assert.match(describeSessionFailure(result.reason), /not signed in/);
+    });
+  });
+
+  await asyncTest('a session Supabase rejects is refused', async () => {
+    await withEnv({ SUPABASE_URL: 'https://x.supabase.co', SUPABASE_ANON_KEY: 'anon' }, async () => {
+      await withFetch(async () => ({ ok: false, status: 401, json: async () => ({}) }), async () => {
+        const result = await verifySession({ headers: { authorization: 'Bearer stale' } });
+        assert.equal(result.ok, false);
+        assert.match(describeSessionFailure(result.reason), /expired/);
+      });
+    });
+  });
+
+  await asyncTest('a session Supabase accepts identifies the sender', async () => {
+    await withEnv({ SUPABASE_URL: 'https://x.supabase.co', SUPABASE_ANON_KEY: 'anon' }, async () => {
+      let sentTo = null;
+      await withFetch(async (url, options) => {
+        sentTo = { url, auth: options.headers.Authorization, apikey: options.headers.apikey };
+        return { ok: true, status: 200, json: async () => ({ id: 'user-1', email: 'head@school.sch.uk' }) };
+      }, async () => {
+        const result = await verifySession({ headers: { authorization: 'Bearer good' } });
+        assert.equal(result.ok, true);
+        assert.equal(result.user.email, 'head@school.sch.uk');
+        assert.equal(sentTo.url, 'https://x.supabase.co/auth/v1/user');
+        assert.equal(sentTo.auth, 'Bearer good', 'the caller\'s own token is what gets checked');
+      });
+    });
+  });
+
+  await asyncTest('an unconfigured server says so rather than letting everybody through', async () => {
+    await withEnv({ SUPABASE_URL: '', SUPABASE_ANON_KEY: '' }, async () => {
+      assert.equal(sessionConfigured(), false);
+      const result = await verifySession({ headers: { authorization: 'Bearer anything' } });
+      assert.equal(result.ok, false, 'no configuration must mean no access, never open access');
+      assert.match(describeSessionFailure(result.reason), /SUPABASE_URL/);
+    });
+  });
+
+  await asyncTest('Supabase being unreachable refuses rather than guesses', async () => {
+    await withEnv({ SUPABASE_URL: 'https://x.supabase.co', SUPABASE_ANON_KEY: 'anon' }, async () => {
+      await withFetch(async () => { throw new TypeError('fetch failed'); }, async () => {
+        const result = await verifySession({ headers: { authorization: 'Bearer good' } });
+        assert.equal(result.ok, false);
+        assert.match(describeSessionFailure(result.reason), /Nothing was sent/);
+      });
+    });
+  });
+})();
 
 /* ============================== signing in ============================== */
 
