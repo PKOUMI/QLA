@@ -459,3 +459,35 @@ the app was losing work.
   its question, pupil and mark counts, when a mark was last entered, and which
   one the app would open. That is the question worth asking when marking
   appears to have vanished.
+
+## The 1,000-row ceiling
+
+The cause of "it isn't saving": it was saving. It was not *reading*.
+
+Supabase returns at most **1,000 rows** per request and says nothing when it
+truncates — you get exactly 1,000 rows and a 200. A class of 90 sitting a
+30-question paper is 2,700 marks, so a marksheet had been arriving with a
+third of its marking and the rest showing blank. The connection check reported
+"1000 marks stored", which was the ceiling wearing the costume of a fact.
+
+- **Fixed:** every read is now made in pages until a page comes back short.
+  The page size is taken from what the **first response actually contained**,
+  not from what was asked for, because the server applies its own cap
+  silently — asking for 1,000 and receiving 500 means the ceiling is 500, and
+  treating that as the end of the data is how this happened.
+- Paging needs a deterministic sort or two pages can repeat one row and skip
+  another, so a second page without one is refused rather than returned as
+  though it were complete. Every call site now names its order.
+- **Fixed (test harness):** the stand-in PostgREST did not cap responses, so it
+  cheerfully returned 2,700 marks that the real thing would have cut to 1,000.
+  It now caps like Supabase, and the cap is configurable — the suite is run at
+  7, 100 and 1,000 rows to prove the paging is not merely correct at one
+  convenient number.
+- **New:** a 1,200-mark assessment is written, read back, and re-saved, with
+  every mark checked. This is the test that would have caught it.
+- **Fixed:** the connection check asked for the newest mark by sorting a page
+  of marks it had already been given — which, capped, usually did not contain
+  the newest one. That is why the time never moved. It now asks the database
+  for it directly.
+- **Changed:** the end-to-end test waits for the database rather than sleeping
+  a fixed number of milliseconds. Four consecutive clean runs.

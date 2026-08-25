@@ -410,6 +410,51 @@ await test('work saved in the browser before the database existed can be brought
   assert.equal(loaded.pupilEmailText[loaded.pupils[0].id].greeting, 'Hi');
 });
 
+/* =========================== a real-sized paper ========================= */
+
+await test('a paper too big for one response is read whole', async () => {
+  // 40 pupils x 30 questions = 1,200 marks. Supabase returns at most 1,000
+  // rows in a response and says nothing when it truncates, so this is the
+  // shape that quietly arrived missing a fifth of its marking.
+  const repo = await signInAs(ADMIN, 'head@northgate.sch.uk');
+
+  const big = newAssessment({ paperType: 'higher' });
+  big.exam.name = 'Whole Year Group';
+  big.questions = Array.from({ length: 30 }, (_, i) => newQuestion(`Q${i + 1}`, 4));
+  big.pupils = Array.from({ length: 40 }, (_, i) => newPupil(`Pupil ${i + 1}`, `p${i + 1}@big.invalid`));
+  for (const pupil of big.pupils) {
+    for (const question of big.questions) setMark(big, pupil.id, question.id, 2);
+  }
+
+  const expected = big.pupils.length * big.questions.length;
+  assert.equal(expected, 1200);
+  await repo.save(big);
+  assert.equal(rows(`select count(*)::int as n from marks where assessment_id = '${big.id}'`)[0].n, expected,
+    'every mark must be written');
+
+  const loaded = await repo.get(big.id);
+  const counted = Object.values(loaded.marks)
+    .reduce((total, row) => total + Object.keys(row).length, 0);
+  assert.equal(counted, expected,
+    `read back ${counted} of ${expected} marks — the rest would have shown blank on the marksheet`);
+  assert.equal(loaded.pupils.length, 40);
+  assert.equal(loaded.questions.length, 30);
+});
+
+await test('nothing is lost when a big paper is saved again', async () => {
+  const repo = await signInAs(ADMIN, 'head@northgate.sch.uk');
+  const list = await repo.list();
+  const big = await repo.get(list.find((item) => item.name === 'Whole Year Group').id);
+
+  const before = rows(`select count(*)::int as n from marks where assessment_id = '${big.id}'`)[0].n;
+  setMark(big, big.pupils[0].id, big.questions[0].id, 4);
+  await repo.save(big);
+
+  assert.equal(rows(`select count(*)::int as n from marks where assessment_id = '${big.id}'`)[0].n, before,
+    'a save must not drop the marks that were beyond the first page');
+  assert.equal(Number(rows(`select mark from marks where pupil_id = '${big.pupils[0].id}' and question_id = '${big.questions[0].id}'`)[0].mark), 4);
+});
+
 /* ============================ staff and markers ========================= */
 
 const people = await import('../js/people.js');

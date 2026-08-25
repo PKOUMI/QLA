@@ -165,12 +165,22 @@ async function run() {
     const label = `Assessment: ${assessment.name || 'Untitled'}`;
     const s = step(label);
     try {
-      const [questions, entries, marks] = await Promise.all([
-        selectRows('questions', { select: 'id', eq: { assessment_id: assessment.id } }),
-        selectRows('assessment_pupils', { select: 'pupil_id', eq: { assessment_id: assessment.id } }),
-        selectRows('marks', { select: 'pupil_id,question_id,mark,updated_at', eq: { assessment_id: assessment.id } }),
+      const [questions, entries, marks, newest] = await Promise.all([
+        selectRows('questions', { select: 'id', eq: { assessment_id: assessment.id }, order: 'position.asc' }),
+        selectRows('assessment_pupils', { select: 'pupil_id', eq: { assessment_id: assessment.id }, order: 'position.asc' }),
+        selectRows('marks', {
+          select: 'pupil_id,question_id,mark', eq: { assessment_id: assessment.id },
+          order: 'pupil_id.asc,question_id.asc',
+        }),
+        // Asked for directly, sorted, one row. Working it out from a page of
+        // marks was what made this page report a stale time: a response is
+        // capped, so the newest mark was often not in the sample at all.
+        selectRows('marks', {
+          select: 'updated_at', eq: { assessment_id: assessment.id },
+          order: 'updated_at.desc', limit: 1,
+        }),
       ]);
-      const latest = marks.map((m) => m.updated_at).sort().pop();
+      const latest = newest[0]?.updated_at;
       s.ok(`${questions.length} questions · ${entries.length} pupils · ${marks.length} marks`
         + (latest ? ` · last mark entered ${latest}` : ' · no marks yet')
         + ` · id ends ${assessment.id.slice(-6)}`);

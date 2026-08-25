@@ -229,19 +229,75 @@ function filters({ eq = {}, inValues = {} }) {
 }
 
 /**
+ * How many rows a single request can bring back.
+ *
+ * Supabase caps API responses — 1,000 rows by default — and says nothing when
+ * it does: you get exactly 1,000 rows and a 200. A class of 90 sitting a
+ * 30-question paper is 2,700 marks, so a marksheet quietly arrived with a
+ * third of its marks and the rest showing blank. Reading in pages is the only
+ * safe way to ask for "all of them".
+ */
+const PAGE = 1000;
+
+/**
  * @param {string} table
  * @param {object} options  { select, eq, in, order, limit, single }
+ *
+ * With no `limit`, this keeps asking until a page comes back short, so the
+ * caller genuinely gets everything. `order` is not decoration when paging:
+ * without a deterministic sort, two pages can repeat a row and miss another.
  */
-export async function selectRows(table, { select = '*', eq = {}, in: inValues = {}, order, limit, single = false } = {}) {
+export async function selectRows(table, {
+  select = '*', eq = {}, in: inValues = {}, order, limit, single = false,
+} = {}) {
   const where = filters({ eq, inValues });
   if (where === null) return single ? null : [];
 
-  const params = [`select=${encode(select)}`, ...where];
-  if (order) params.push(`order=${encode(order)}`);
-  if (limit) params.push(`limit=${encode(limit)}`);
+  const build = (extra = []) => {
+    const params = [`select=${encode(select)}`, ...where, ...extra];
+    if (order) params.push(`order=${encode(order)}`);
+    return `/rest/v1/${encode(table)}?${params.join('&')}`;
+  };
 
-  const rows = await call(`/rest/v1/${encode(table)}?${params.join('&')}`);
-  return single ? (Array.isArray(rows) ? rows[0] || null : rows) : (rows || []);
+  // An explicit limit means the caller wants that many and no more.
+  if (limit || single) {
+    const rows = await call(build([`limit=${encode(limit || 1)}`]));
+    return single ? (Array.isArray(rows) ? rows[0] || null : rows) : (rows || []);
+  }
+
+  /*
+   * Keep asking until a page comes back short.
+   *
+   * The page size is taken from what the FIRST response actually contained,
+   * not from what was asked for. The server has its own cap and applies it
+   * silently, so asking for 1,000 and receiving 500 means the ceiling is 500 —
+   * and treating that as "the end of the data" is precisely how a marksheet
+   * arrives missing its last two hundred marks.
+   */
+  const all = [];
+  let pageSize = null;
+  const MAX_PAGES = 200;                       // 200 pages is far past any real class
+
+  for (let page = 0, offset = 0; page < MAX_PAGES; page += 1) {
+    const rows = await call(build([`limit=${PAGE}`, `offset=${offset}`])) || [];
+
+    // Paging without a sort order can repeat one row and skip another, so a
+    // second page that actually contains something is refused rather than
+    // handed back as though it were complete. The first page is always safe:
+    // most reads are one page and must not be made to declare an order they
+    // do not need.
+    if (page > 0 && rows.length > 0 && !order) {
+      throw new SupabaseError(
+        `Reading ${table} needs more than one page, which cannot be done reliably without a sort order.`, 0);
+    }
+
+    all.push(...rows);
+    if (pageSize === null) pageSize = rows.length;
+    if (rows.length === 0 || rows.length < pageSize) return all;
+    offset += rows.length;
+  }
+
+  throw new SupabaseError(`Reading ${table} did not finish after ${MAX_PAGES} pages.`, 0);
 }
 
 export async function insertRows(table, rows, { upsert = false, onConflict } = {}) {

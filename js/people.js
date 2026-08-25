@@ -76,7 +76,7 @@ export const removeStaff = (email) => callGuarded('remove_staff', { addr: email 
 
 export async function listMarkers(assessmentId) {
   const rows = await selectRows('assessment_teachers', {
-    select: 'user_id', eq: { assessment_id: assessmentId },
+    select: 'user_id', eq: { assessment_id: assessmentId }, order: 'user_id.asc',
   });
   return rows.map((row) => row.user_id);
 }

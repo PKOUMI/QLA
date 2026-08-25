@@ -405,6 +405,7 @@ export function createSupabaseRepo({ orgId, userId, canManage = () => true }) {
       const entries = await selectRows('assessment_pupils', {
         select: 'assessment_id',
         in: { assessment_id: rows.map((row) => row.id) },
+        order: 'assessment_id.asc,pupil_id.asc',
       });
       const counts = new Map();
       for (const entry of entries) {
@@ -424,15 +425,20 @@ export function createSupabaseRepo({ orgId, userId, canManage = () => true }) {
       const assessment = await selectRows('assessments', { eq: { id }, single: true });
       if (!assessment) return null;
 
+      // Every one of these carries a sort order, because without one they
+      // cannot be read in pages — and a 90-pupil paper has more marks than a
+      // single response is allowed to return.
       const [questions, entries, marks, sendLog] = await Promise.all([
-        selectRows('questions', { eq: { assessment_id: id } }),
-        selectRows('assessment_pupils', { eq: { assessment_id: id } }),
-        selectRows('marks', { eq: { assessment_id: id } }),
-        selectRows('send_log', { eq: { assessment_id: id } }),
+        selectRows('questions', { eq: { assessment_id: id }, order: 'position.asc' }),
+        selectRows('assessment_pupils', { eq: { assessment_id: id }, order: 'position.asc' }),
+        selectRows('marks', { eq: { assessment_id: id }, order: 'pupil_id.asc,question_id.asc' }),
+        selectRows('send_log', { eq: { assessment_id: id }, order: 'sent_at.asc' }),
       ]);
 
       const pupils = entries.length
-        ? await selectRows('pupils', { in: { id: entries.map((entry) => entry.pupil_id) } })
+        ? await selectRows('pupils', {
+          in: { id: entries.map((entry) => entry.pupil_id) }, order: 'id.asc',
+        })
         : [];
 
       const doc = fromRows({ assessment, questions, pupils, entries, marks, sendLog });

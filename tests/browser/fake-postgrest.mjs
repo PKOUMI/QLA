@@ -21,6 +21,13 @@ const PSQL = process.env.PSQL || '/usr/lib/postgresql/16/bin/psql';
 const DB = process.env.PGDATABASE || 'epstore';
 const PORT = Number(process.env.PGRST_PORT || 5401);
 
+/**
+ * Supabase refuses to return more than this many rows in one response, and
+ * says nothing when it truncates. Reproduced here on purpose: without it, a
+ * test happily reads 2,700 marks that the real thing would have cut to 1,000.
+ */
+const MAX_ROWS = Number(process.env.PGRST_MAX_ROWS || 1000);
+
 /* --- Running SQL --------------------------------------------------------- */
 
 export class SqlError extends Error {
@@ -68,7 +75,7 @@ const ident = (value) => {
 function whereFrom(params) {
   const clauses = [];
   for (const [key, raw] of params) {
-    if (['select', 'order', 'limit', 'on_conflict'].includes(key)) continue;
+    if (['select', 'order', 'limit', 'offset', 'on_conflict'].includes(key)) continue;
     if (raw.startsWith('eq.')) {
       clauses.push(`${ident(key)} = ${quote(raw.slice(3))}`);
     } else if (raw.startsWith('in.(')) {
@@ -97,11 +104,18 @@ function selectSql(table, params) {
 
   const order = params.get('order');
   if (order) {
-    const [column, direction] = order.split('.');
-    sql += ` order by ${ident(column)} ${direction === 'desc' ? 'desc' : 'asc'}`;
+    const parts = order.split(',').map((one) => {
+      const [column, direction] = one.split('.');
+      return `${ident(column)} ${direction === 'desc' ? 'desc' : 'asc'}`;
+    });
+    sql += ` order by ${parts.join(', ')}`;
   }
-  const limit = params.get('limit');
-  if (limit) sql += ` limit ${Number(limit)}`;
+
+  const asked = Number(params.get('limit') || 0);
+  const capped = asked > 0 ? Math.min(asked, MAX_ROWS) : MAX_ROWS;
+  sql += ` limit ${capped}`;
+  const offset = Number(params.get('offset') || 0);
+  if (offset > 0) sql += ` offset ${offset}`;
   return asJson(sql);
 }
 

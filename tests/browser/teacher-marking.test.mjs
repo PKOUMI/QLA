@@ -80,6 +80,20 @@ psql(['-d', DB], `
 const rows = (sql) => JSON.parse(psql(['-d', DB, '-A', '-t', '-c',
   `select coalesce(json_agg(t), '[]')::text from (${sql}) t`]).trim());
 
+/**
+ * Wait for the database to catch up, rather than sleeping and hoping.
+ * Saving is debounced in the app, so every fixed sleep here is a future
+ * intermittent failure.
+ */
+async function untilDb(test, what, timeout = 15000) {
+  const started = Date.now();
+  while (Date.now() - started < timeout) {
+    if (test()) return true;
+    await new Promise((resolve) => setTimeout(resolve, 200));
+  }
+  throw new Error(`timed out waiting for ${what}`);
+}
+
 /* --- The two servers ----------------------------------------------------- */
 
 process.env.PGDATABASE = DB;
@@ -163,7 +177,7 @@ const fill = async (selector, value) => page.evaluate(`(() => {
 await fill('#exam-name', 'Biology Paper 1');
 await fill('#exam-subject', 'Biology');
 await fill('#question-count', '2');
-await sleep(400);
+await until(page, `document.querySelectorAll('#questions-body tr').length === 2`, 'two question rows');
 await page.evaluate(`(() => {
   const maxes = [...document.querySelectorAll('#questions-body input')];
   return maxes.length;
@@ -178,7 +192,7 @@ await page.evaluate(`(() => {
   });
   return true;
 })()`);
-await sleep(300);
+await sleep(200);
 await page.evaluate(`(() => {
   document.querySelectorAll('.boundary-list input').forEach((n, i) => {
     n.value = String(i * 2); n.dispatchEvent(new Event('input', { bubbles: true }));
@@ -187,7 +201,7 @@ await page.evaluate(`(() => {
 })()`);
 await sleep(300);
 await page.evaluate(`document.querySelector('#btn-add-pupil, #btn-add-pupil-empty').click()`);
-await sleep(300);
+await until(page, `document.querySelectorAll('#pupils-body tr').length >= 1`, 'a pupil row');
 await page.evaluate(`(() => {
   const row = document.querySelector('#pupils-body tr');
   const cells = row.querySelectorAll('input');
@@ -195,7 +209,9 @@ await page.evaluate(`(() => {
   cells[1].value = 'ada@school.invalid'; cells[1].dispatchEvent(new Event('input', { bubbles: true }));
   return true;
 })()`);
-await sleep(1500);
+await untilDb(() => rows('select * from assessments').length === 1, 'the assessment to be saved');
+await untilDb(() => rows('select * from questions').length === 2, 'the questions to be saved');
+await untilDb(() => rows('select * from pupils').length === 1, 'the pupil to be saved');
 
 const assessments = rows('select id, name from assessments');
 check('the assessment reached the database', assessments.length === 1, JSON.stringify(assessments));
@@ -211,7 +227,8 @@ await page.evaluate(`(() => {
   row.querySelector('input').click();
   return true;
 })()`);
-await sleep(1200);
+await untilDb(() => rows(`select * from assessment_teachers where user_id = '${TEACHER}'`).length === 1,
+  'the marker assignment to be saved');
 check('the teacher was assigned through the app',
   rows(`select * from assessment_teachers where user_id = '${TEACHER}'`).length === 1);
 
@@ -221,7 +238,9 @@ console.log('\n2. The teacher signs in on their own machine and enters a mark');
 await signInAs(TEACHER, 'teacher@northgate.sch.uk');
 await page.goto(`http://localhost:${APP_PORT}/?teacher=1#marksheet`);
 await until(page, `!document.querySelector('#auth-gate')`, 'the app to load');
-await until(page, `document.querySelectorAll('.mark-input').length > 0`, 'the marksheet');
+// Reading now takes two requests per table (a page, then the check for a
+// second page), so give the marksheet time to arrive complete.
+await until(page, `document.querySelectorAll('.mark-input').length >= 2`, 'the whole marksheet', 15000);
 await sleep(600);
 
 check('the teacher can see the paper', await page.evaluate(`document.querySelectorAll('.mark-input').length >= 2`));
@@ -241,7 +260,7 @@ await page.evaluate(`(() => {
   n.dispatchEvent(new Event('blur', { bubbles: true }));
   return true;
 })()`);
-await sleep(1600);
+await untilDb(() => rows('select * from marks').length === 1, "the teacher's mark to reach the database");
 
 const writes = api.writesSince(from);
 console.log('    the browser sent:', JSON.stringify(writes));
@@ -270,15 +289,16 @@ await page.evaluate(`(async () => {
   return true;
 })()`);
 await sleep(1200);
+await until(page, `document.querySelectorAll('.mark-input').length >= 2`, 'the marksheet after the drift');
 await page.evaluate(`(() => {
-  const n = document.querySelectorAll('.mark-input')[1];
-  n.dataset.probe2 = '1';
+  const inputs = [...document.querySelectorAll('.mark-input')];
+  const n = inputs.find((i) => i.value === '') || inputs[inputs.length - 1];
   n.focus(); n.value = '1';
   n.dispatchEvent(new Event('input', { bubbles: true }));
   n.dispatchEvent(new Event('blur', { bubbles: true }));
   return true;
 })()`);
-await sleep(1600);
+await untilDb(() => rows('select * from marks').length === 2, 'the second mark to reach the database');
 const driftToast = await page.evaluate(`([...document.querySelectorAll('.toast')].pop()||{}).textContent || ''`);
 check('the teacher is not told their marking failed', !/NOT saved/.test(driftToast), driftToast.slice(0, 90));
 check('the second mark reached the database', rows('select * from marks').length === 2,
