@@ -491,3 +491,46 @@ third of its marking and the rest showing blank. The connection check reported
   for it directly.
 - **Changed:** the end-to-end test waits for the database rather than sleeping
   a fixed number of milliseconds. Four consecutive clean runs.
+
+## Branding, and a night mode
+
+- **New:** a palette built for the third hour of marking. A desaturated teal
+  on a ground that is never pure white; the strongest contrast on the page is
+  16:1 rather than the 21:1 of black on white, which is past the comfortable
+  range for continuous reading. Every pair still meets WCAG AA — comfortable
+  is not the same as washed out, and a misread digit is a mark entered wrong.
+  Checked with a script, not by eye.
+- **New:** night mode, and it is not an inversion. Inverting a light theme
+  gives white text on black, which haloes at length. Night is a very dark
+  green-grey ground (0.7% luminance, not 0%) with off-white text. The header
+  button cycles: match my computer → day → night, kept per browser because a
+  bright classroom and a dark front room want different answers.
+- The theme is applied in `<head>` before the stylesheet, so a night user
+  never sees a white flash on the way in.
+- Toasts have their own ground and text colour per theme. A bright rectangle
+  sliding into the corner of a dim room is exactly the jolt the palette exists
+  to avoid.
+- **New:** `brand/` — the mark in SVG, mono, two lockups, and PNGs from 32 to
+  1024. Four bars, deliberately uneven: a neat ascending ramp says "numbers
+  went up", and this is about every pupil having done something different.
+- Applied to the app, the feedback email, the marketing site, and both
+  documents in `docs/`.
+
+## Marketing page, corrected
+
+- **Removed:** "Lock the paper while marking". The PIN lock no longer exists.
+  Replaced with roles, which is what actually protects a paper now.
+- **Fixed:** the FAQ still described locking an assessment with a PIN.
+- **New:** "Built for the third hour of marking" — the eye-comfort work as a
+  feature, since it is one.
+- **New:** "Start in the classroom, finish in the staffroom" — marks held for
+  the school, two people marking at once, and signing in with an emailed code
+  rather than a password.
+- **New FAQ:** how teachers sign in, and what happens to their access when
+  they are removed from the staff list.
+
+## Marksheet
+
+- **Fixed:** the wheel changed the mark under the pointer. Scrolling to find a
+  pupil is the reason anybody touches the wheel on a marksheet, and the cost
+  of the old behaviour was a silently altered mark on a real child's paper.

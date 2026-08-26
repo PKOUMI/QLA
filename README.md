@@ -148,6 +148,12 @@ at once without overwriting each other.
 Anything already saved in a browser is brought across the first time it is
 saved to the database.
 
+## Day and night
+
+A button in the header cycles between matching your computer, day, and night.
+The colours are chosen for people entering marks for an hour at a stretch —
+see BRANDING.md for what that changed and why.
+
 ## Who can do what
 
 Roles decide it, and Postgres enforces it. There is no PIN — a shared PIN is a

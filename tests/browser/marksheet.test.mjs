@@ -147,6 +147,25 @@ await leaveCell();
 check('one and a half is accepted', (await boxValue()) === '1.5');
 check('and stored', (await storedMark()) === 1.5);
 
+console.log('\n6. The wheel scrolls the page, it does not change marks');
+await typeInto('2');
+await leaveCell();
+check('a mark is in place to be disturbed', (await boxValue()) === '2');
+
+const wheeled = await page.evaluate(`(() => {
+  const n = document.querySelector('[data-probe]');
+  n.focus();
+  const before = n.value;
+  const event = new WheelEvent('wheel', { deltaY: -120, bubbles: true, cancelable: true });
+  n.dispatchEvent(event);
+  return { before, after: n.value, prevented: event.defaultPrevented };
+})()`);
+check('the wheel is refused over a focused mark box', wheeled.prevented === true);
+check('and the mark is unchanged', wheeled.after === wheeled.before, JSON.stringify(wheeled));
+await sleep(700);
+check('and nothing was written to storage', (await storedMark()) === 2,
+  `stored: ${JSON.stringify(await storedMark())}`);
+
 console.log(`\n${pass} passed, ${fail} failed`);
 page.close();
 stopAll();

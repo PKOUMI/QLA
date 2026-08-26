@@ -1,63 +1,94 @@
-# Changing the branding
+# EveryPupil branding
 
-Three places, and only one of them is likely to matter to you.
+## The palette
 
-## 1. The app's colours — `css/styles.css`
+A desaturated teal on a ground that is never pure white.
 
-Everything is at the top of the file, in the block marked **BRANDING LIVES
-HERE**. Nothing below it names a colour directly; it all refers to these.
+| Token | Day | Night | Used for |
+|---|---|---|---|
+| `--brand-600` | `#0f6f6c` | `#4ebfb7` | Buttons, links, focus rings, the logo |
+| `--brand-500` | `#17847f` | `#68d3cb` | Hover |
+| `--brand-700` | `#0a5957` | `#8fe0da` | Pressed, headings on a wash |
+| `--brand-50` | `#eaf3f2` | `#0d2624` | Palest wash: badges, chips |
+| `--canvas` | `#f1f4f3` | `#101615` | The page behind the cards |
+| `--surface` | `#fbfcfc` | `#1a2322` | Cards |
+| `--ink` | `#16211f` | `#e9f0ee` | Headings |
+| `--body` | `#3a4744` | `#c7d3d0` | Body text |
+| `--muted` | `#5f6d6a` | `#93a19d` | Secondary text |
 
-```css
---brand-50  #eef2ff   /* palest wash: badges, hovers */
---brand-500 #6366f1   /* logo gradient start */
---brand-600 #4f46e5   /* buttons, links, focus rings */
---brand-700 #4338ca   /* hover, logo gradient end */
---brand-900 #312e81   /* email header band */
-```
+### Why these, and not something brighter
 
-Change those five and the whole app follows: buttons, links, focus outlines,
-the step navigation, badges, the logo tile.
+The people using this will sit with it for two hours entering ninety pupils'
+marks. Three decisions follow from that:
 
-The neutrals (`--ink`, `--body`, `--line`, `--canvas`) are a cool grey chosen
-to sit with indigo. If you move to a warm brand colour, warm these very
-slightly too, or the greys will look like they belong to the old palette.
+- **The canvas is 90% luminance, not 100%.** A pure white background is a lamp
+  pointed at the reader. Ten per cent off is invisible as a choice and
+  noticeable as an hour.
+- **The strongest contrast on the page is 16:1, not 21:1.** Black on white is
+  past the comfortable range for continuous reading; the text is a very dark
+  green-grey instead.
+- **The hue sits mid-spectrum.** Deep blues and reds focus at slightly
+  different depths inside the eye, so a saturated blue interface makes the eye
+  hunt. Teal is where it works least hard.
 
-Chart colours sit in the same block (`--viz-fill`, `--viz-ramp-0` to `-4`).
-They are deliberately a separate blue rather than your brand hue: charts have
-their own contrast requirements, and a brand colour picked to look good on a
-button often fails as a data colour. Change them if you like, but check
-contrast against a white card afterwards.
+Night is not an inversion. Inverting a light theme gives white text on black,
+which haloes and smears at length. Night uses a very dark green-grey ground
+(0.7% luminance, not 0%) with off-white text (`#e9f0ee`, not `#ffffff`) —
+the gap between pure black and pure white is the part that hurts.
 
-## 2. The email's colours — `shared/email-template.js`
+**Every pair meets WCAG AA.** Comfortable is not the same as washed out, and a
+misread digit is a mark entered wrong. Re-check with the numbers above if you
+change anything: body text needs 4.5:1 against its background.
 
-One `COLOURS` object at the top. It has to be separate: email clients strip
-`<style>` blocks and do not support CSS variables, so every colour is inlined
-on the element. Match the same five brand values by hand.
+## The logo
 
-## 3. The logo
+`brand/` holds the lot.
 
-Currently a letter in a rounded tile, defined in three spots:
-
-| Where | What |
+| File | For |
 |---|---|
-| `index.html` | The `<link rel="icon">` data URI, and `.brand-mark` |
-| `marketing/index.html` | The same two, plus `<meta name="theme-color">` |
-| `css/styles.css` | `.brand-mark` gradient |
+| `everypupil-mark.svg` | The tile. Anywhere square: favicon, app icon, avatar |
+| `everypupil-mark-mono.svg` | One colour, inherited. Print, embroidery, black and white |
+| `everypupil-lockup.svg` | Mark plus wordmark, for a light background |
+| `everypupil-lockup-dark.svg` | The same for a dark background |
+| `everypupil-mark-{32,64,180,512,1024}.png` | Where SVG is not accepted |
 
-For a real logo, replace the `.brand-mark` span with an `<img>` or inline SVG
-and export a PNG favicon. Fifteen minutes, once you have artwork.
+Four bars, deliberately uneven. A neat ascending ramp is the chart cliché and
+says "numbers went up"; these are four different heights because the product
+is about noticing that every pupil in the room did something different.
 
-## The marketing site
+Clear space: half the tile's width on every side. Smallest use: 20px — it was
+drawn to survive 32 and checked at 32, which is where legibility is decided,
+not at 512.
 
-`marketing/index.html` carries its own copy of the tokens, because it is a
-standalone file with no shared stylesheet. Same names, same values — change
-both together, or the site and the app will drift apart.
+Do not: re-colour the bars, stretch it, add a shadow, or set the wordmark in
+another typeface.
 
-## A quick check
+## Changing it
 
-After a rebrand, look at these four, which are where mismatches show up:
+**1. The app — `css/styles.css`.** Both palettes are in the two blocks at the
+top (`:root` and `[data-theme="dark"]`). Nothing below names a colour
+directly. Change those and the whole app follows.
 
-1. The grade pills on the marksheet
-2. A sent email, in the preview
-3. The Analyse charts against their white cards
-4. Focus outlines when tabbing through the marksheet
+Charts sit in the same blocks (`--viz-fill`, `--viz-ramp-0` to `-4`). They now
+use the brand hue rather than a separate one, because a single-hue chart on a
+single-hue interface reads as one system. If you change the brand, check the
+ramp still separates into five distinguishable steps.
+
+**2. The feedback email — `shared/email-template.js`.** Mail clients strip
+`<style>`, so every colour is inline hex in the `COLOURS` block at the top.
+It has to be changed by hand to match.
+
+**3. The marketing site — `marketing/index.html`.** Its own `:root` block, the
+same values.
+
+**4. The logo files — `brand/`.** The mark's teal is written into each SVG.
+
+## Night mode
+
+The button in the app header cycles: match my computer → day → night. The
+choice is kept per browser, not per account: a teacher on a bright
+classroom machine and the same teacher at home at 9pm want different answers,
+and syncing it would force one on both.
+
+The theme is applied by a small script in `<head>` before the stylesheet
+loads, so a night user never gets a white flash on the way in.

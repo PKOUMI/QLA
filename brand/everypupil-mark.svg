@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100" role="img" aria-label="EveryPupil">
+  <title>EveryPupil</title>
+  <!--
+    Four bars, deliberately uneven.
+
+    A neat ascending ramp is the chart cliché and says "numbers went up".
+    These are four different heights because the product is about noticing
+    that every pupil in the room did something different. The rounded caps
+    keep it soft at small sizes, where a sharp corner reads as noise.
+  -->
+  <rect width="100" height="100" rx="24" fill="#0F6F6C"/>
+  <g fill="#FBFCFC">
+    <rect x="22" y="52" width="11" height="26" rx="5.5"/>
+    <rect x="39" y="30" width="11" height="48" rx="5.5"/>
+    <rect x="56" y="60" width="11" height="18" rx="5.5"/>
+    <rect x="73" y="42" width="11" height="36" rx="5.5" opacity="0.62"/>
+  </g>
+</svg>

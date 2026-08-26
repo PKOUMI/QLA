@@ -16,6 +16,7 @@ import {
 import { createSupabaseRepo } from './storage-supabase.js';
 import * as roles from './roles.js';
 import { initStaffButton } from './staff.js';
+import { initThemeButton } from './theme.js';
 import * as markers from './markers.js';
 import { validateAssessment } from './validation.js';
 import { $, el, toast, openModal, closeModal, confirmDialog, debounce, downloadFile, readFileAsText, plural } from './ui.js';
@@ -321,6 +322,8 @@ async function boot() {
   setupView.init();
   marksheetView.init();
   feedbackView.init();
+
+  initThemeButton($('#btn-theme'));
 
   // Any element with data-goto navigates.
   document.addEventListener('click', (event) => {

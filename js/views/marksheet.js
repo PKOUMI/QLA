@@ -244,6 +244,11 @@ function renderBody(assessment, results) {
         // cell it stores, without counting rows and columns.
         dataset: { row: rowIndex, col: colIndex, pupil: pupil.id, question: question.id },
         oninput: (event) => onMarkInput(event, pupil, question, cell),
+        // A number field changes its value when the wheel turns over it. On a
+        // marksheet that is a trap: scrolling to find a name is the reason
+        // anybody touches the wheel here, and the cost of getting it wrong is
+        // a silently altered mark on a real child's paper.
+        onwheel: (event) => { if (document.activeElement === event.target) event.preventDefault(); },
         onblur: (event) => onMarkBlur(event, pupil, question, cell),
         onkeydown: (event) => onMarkKey(event, rowIndex, colIndex),
         onfocus: (event) => event.target.select(),

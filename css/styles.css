@@ -10,36 +10,103 @@
  * to a colour directly. See BRANDING.md for the other two places.
  * ------------------------------------------------------------------------ */
 :root {
-  --brand-50:#eef2ff; --brand-100:#e0e7ff; --brand-200:#c7d2fe;
-  --brand-500:#6366f1; --brand-600:#4f46e5; --brand-700:#4338ca; --brand-900:#312e81;
+  /* --- Brand ------------------------------------------------------------
+   * A desaturated teal, on a ground that is never pure white.
+   *
+   * Chosen for people who will sit with this for two hours entering marks.
+   * Three things do the work:
+   *   - the canvas is 90% luminance rather than 100%, so the screen is not a
+   *     lamp pointed at the reader;
+   *   - the strongest contrast on the page is 16:1, not the 21:1 of black on
+   *     white, which is past the point of comfort for continuous reading;
+   *   - the hue sits mid-spectrum, where the eye focuses with least effort.
+   *     Deep blues and reds focus at slightly different depths and make the
+   *     eye hunt.
+   * Every pair still meets WCAG AA. Comfort is not an excuse for washed out.
+   * ------------------------------------------------------------------- */
+  --brand-50:#eaf3f2; --brand-100:#d3e7e5; --brand-200:#a8cfcc;
+  --brand-500:#17847f; --brand-600:#0f6f6c; --brand-700:#0a5957; --brand-900:#06322f;
 
-  --ink:#0f172a; --body:#334155; --muted:#64748b; --faint:#94a3b8;
-  --line:#e2e8f0; --line-strong:#cbd5e1;
-  --surface:#ffffff; --canvas:#f1f5f9; --panel:#f8fafc;
+  --ink:#16211f; --body:#3a4744; --muted:#5f6d6a; --faint:#87958f;
+  --line:#dbe2e0; --line-strong:#c2ccca;
+  --surface:#fbfcfc; --canvas:#f1f4f3; --panel:#e8edec;
 
-  --ok:#059669; --ok-bg:#ecfdf5; --ok-line:#a7f3d0;
-  --warn:#b45309; --warn-bg:#fffbeb; --warn-line:#fde68a;
-  --bad:#dc2626;  --bad-bg:#fef2f2;  --bad-line:#fecaca;
+  --ok:#18704a; --ok-bg:#eaf5ef; --ok-line:#b8ddc9;
+  --warn:#8a5a0b; --warn-bg:#fbf4e6; --warn-line:#ecd7a8;
+  --bad:#a82b21;  --bad-bg:#faeceb;  --bad-line:#eec4c0;
 
-  /* Derived from the brand hue: row hover, toast grounds, callout text. */
-  --row-hover:#fbfcfe;
-  --ok-ink:#065f46; --warn-ink:#78350f; --bad-ink:#7f1d1d;
-  --toast-ok:#065f46; --toast-bad:#991b1b; --toast-warn:#92400e;
-  --email-bg:#eef2f7;
+  --row-hover:#f4f7f6;
+  --ok-ink:#12563a; --warn-ink:#6b4508; --bad-ink:#83201a;
+
+  /* Toasts. Each has its own ground AND its own text colour, because in night
+     a bright rectangle sliding into the corner of a dim room is precisely the
+     jolt this palette exists to avoid. */
+  --toast-bg:#16211f;    --toast-fg:#eef2f1;    --toast-border:transparent;
+  --toast-ok:#12563a;    --toast-ok-fg:#eaf5ef;
+  --toast-bad:#83201a;   --toast-bad-fg:#faeceb;
+  --toast-warn:#6b4508;  --toast-warn-fg:#fbf4e6;
+  --email-bg:#eef1f0;
+  --overlay:rgba(22,33,31,.5);
+  --on-brand:#ffffff;
 
   /* Charts. One hue for single-series marks, plus an ordered ramp used only
-     by the grade donut. Validated for contrast against a white card. */
-  --viz-fill:#2a78d6; --viz-fill-hover:#1c5cab; --viz-track:#cde2fb;
-  --viz-ramp-0:#86b6ef; --viz-ramp-1:#5598e7; --viz-ramp-2:#2a78d6;
-  --viz-ramp-3:#1c5cab; --viz-ramp-4:#104281;
+     by the grade donut. Validated for contrast against the card colour. */
+  --viz-fill:#0f6f6c; --viz-fill-hover:#0a5957; --viz-track:#d3e7e5;
+  --viz-ramp-0:#9fd0cc; --viz-ramp-1:#63b3ad; --viz-ramp-2:#17847f;
+  --viz-ramp-3:#0f6f6c; --viz-ramp-4:#06322f;
 
   --radius:10px; --radius-lg:14px;
-  --shadow-sm:0 1px 2px rgba(15,23,42,.06);
-  --shadow:0 1px 3px rgba(15,23,42,.09), 0 8px 24px -12px rgba(15,23,42,.18);
-  --shadow-lg:0 20px 50px -20px rgba(15,23,42,.35);
+  --shadow-sm:0 1px 2px rgba(22,33,31,.05);
+  --shadow:0 1px 3px rgba(22,33,31,.07), 0 8px 24px -12px rgba(22,33,31,.16);
+  --shadow-lg:0 20px 50px -20px rgba(22,33,31,.3);
   --font:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
   --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
   --header-h:60px;
+}
+
+/* --- Night ---------------------------------------------------------------
+ *
+ * Not an inversion. A dark theme built by inverting a light one produces
+ * white text on black, which smears and haloes for most readers at length.
+ * This is a very dark green-grey ground with off-white text: the ground is
+ * 0.7% luminance rather than 0%, and the text is #e9f0ee rather than #fff,
+ * because the gap between pure black and pure white is the thing that hurts.
+ *
+ * The brand also has to change. #0f6f6c is chosen to carry white text on a
+ * pale ground; on a dark ground it becomes a murky shape, so night uses a
+ * lighter teal that carries DARK text instead.
+ * ---------------------------------------------------------------------- */
+[data-theme="dark"] {
+  --brand-50:#0d2624; --brand-100:#123b38; --brand-200:#256b65;
+  --brand-500:#68d3cb; --brand-600:#4ebfb7; --brand-700:#8fe0da; --brand-900:#bff0ec;
+
+  --ink:#e9f0ee; --body:#c7d3d0; --muted:#93a19d; --faint:#71807c;
+  --line:#2a3533; --line-strong:#3b4846;
+  --surface:#1a2322; --canvas:#101615; --panel:#161e1d;
+
+  --ok:#54c08c; --ok-bg:#12281f; --ok-line:#265c42;
+  --warn:#d9a441; --warn-bg:#2a2114; --warn-line:#5c4a24;
+  --bad:#f08a80;  --bad-bg:#2c1917;  --bad-line:#61302b;
+
+  --row-hover:#1e2827;
+  --ok-ink:#8fdcb4; --warn-ink:#eccb8a; --bad-ink:#f5b4ad;
+
+  --toast-bg:#22302e;    --toast-fg:#e9f0ee;    --toast-border:#3b4846;
+  --toast-ok:#12281f;    --toast-ok-fg:#8fdcb4;
+  --toast-bad:#2c1917;   --toast-bad-fg:#f5b4ad;
+  --toast-warn:#2a2114;  --toast-warn-fg:#eccb8a;
+  --email-bg:#0c1211;
+  --overlay:rgba(4,8,7,.66);
+  /* Text sitting ON the brand colour. Dark, because the night brand is light. */
+  --on-brand:#08201f;
+
+  --viz-fill:#4ebfb7; --viz-fill-hover:#68d3cb; --viz-track:#22322f;
+  --viz-ramp-0:#256b65; --viz-ramp-1:#2f8b84; --viz-ramp-2:#4ebfb7;
+  --viz-ramp-3:#7ad8d0; --viz-ramp-4:#aeeae5;
+
+  --shadow-sm:0 1px 2px rgba(0,0,0,.4);
+  --shadow:0 1px 3px rgba(0,0,0,.5), 0 8px 24px -12px rgba(0,0,0,.7);
+  --shadow-lg:0 20px 50px -20px rgba(0,0,0,.8);
 }
 
 /* --- Base --------------------------------------------------------------- */
@@ -66,10 +133,12 @@ a{color:var(--brand-600)}
   background:var(--surface);border-bottom:1px solid var(--line);
 }
 .brand{display:flex;align-items:center;gap:10px;font-weight:700;color:var(--ink);text-decoration:none;white-space:nowrap}
+/* The mark is now an image, so it must not pick up the old tile styling. */
+img.brand-mark{border-radius:8px;background:none;flex:none}
 .brand-mark{
   width:30px;height:30px;border-radius:8px;flex:none;
   background:linear-gradient(135deg,var(--brand-500),var(--brand-700));
-  color:#fff;display:grid;place-items:center;font-size:13px;font-weight:800;letter-spacing:-.02em;
+  color:var(--on-brand);display:grid;place-items:center;font-size:13px;font-weight:800;letter-spacing:-.02em;
 }
 .brand-name{font-size:15px}
 .brand-name small{display:block;font-size:10.5px;font-weight:500;color:var(--muted);letter-spacing:.04em;text-transform:uppercase}
@@ -87,11 +156,12 @@ a{color:var(--brand-600)}
   width:21px;height:21px;border-radius:999px;background:var(--line);color:var(--muted);
   display:grid;place-items:center;font-size:11.5px;font-weight:700;flex:none;
 }
-.step[aria-current="page"] .step-num{background:var(--brand-600);color:#fff}
-.step.is-done .step-num{background:var(--ok);color:#fff}
+.step[aria-current="page"] .step-num{background:var(--brand-600);color:var(--on-brand)}
+.step.is-done .step-num{background:var(--ok);color:var(--on-brand)}
 .step-sep{width:14px;height:1px;background:var(--line-strong);flex:none}
 
 .header-actions{display:flex;align-items:center;gap:8px;min-width:0;flex-shrink:0}
+.btn-icon{width:32px;padding:0;justify-content:center;font-size:15px;line-height:1}
 /* The current assessment's name lives on this button, so it needs room to
    shrink rather than pushing the header wider than the window. */
 #btn-assessments{max-width:min(30vw,260px);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:block}
@@ -165,7 +235,7 @@ select{appearance:none;background-image:url("data:image/svg+xml;utf8,<svg xmlns=
 .btn:hover:not(:disabled){background:var(--panel);border-color:var(--faint)}
 .btn:active:not(:disabled){transform:translateY(1px)}
 .btn:disabled{opacity:.5;cursor:not-allowed}
-.btn-primary{background:var(--brand-600);border-color:var(--brand-600);color:#fff;font-weight:600}
+.btn-primary{background:var(--brand-600);border-color:var(--brand-600);color:var(--on-brand);font-weight:600}
 .btn-primary:hover:not(:disabled){background:var(--brand-700);border-color:var(--brand-700)}
 .btn-danger{color:var(--bad);border-color:var(--bad-line)}
 .btn-danger:hover:not(:disabled){background:var(--bad-bg)}
@@ -326,7 +396,7 @@ tr.avg-row .avg-pct{font-size:10.5px;opacity:.75;font-variant-numeric:tabular-nu
 
 /* --- Modal -------------------------------------------------------------- */
 .modal-backdrop{
-  position:fixed;inset:0;background:rgba(15,23,42,.55);backdrop-filter:blur(2px);
+  position:fixed;inset:0;background:var(--overlay);backdrop-filter:blur(2px);
   display:none;align-items:center;justify-content:center;padding:20px;z-index:100;
 }
 .modal-backdrop.is-open{display:flex}
@@ -350,11 +420,14 @@ tr.avg-row .avg-pct{font-size:10.5px;opacity:.75;font-variant-numeric:tabular-nu
 .toasts{position:fixed;bottom:18px;right:18px;z-index:200;display:flex;flex-direction:column;gap:9px;max-width:400px}
 .toast{
   display:flex;gap:10px;align-items:flex-start;padding:12px 15px;border-radius:var(--radius);
-  background:var(--ink);color:var(--panel);box-shadow:var(--shadow-lg);font-size:13.5px;line-height:1.45;
+  background:var(--toast-bg);color:var(--toast-fg);border:1px solid var(--toast-border);
+  box-shadow:var(--shadow-lg);font-size:13.5px;line-height:1.45;
   animation:slide .2s ease;
 }
 @keyframes slide{from{opacity:0;transform:translateX(14px)}to{opacity:1;transform:none}}
-.toast.ok{background:var(--toast-ok)} .toast.bad{background:var(--toast-bad)} .toast.warn{background:var(--toast-warn)}
+.toast.ok{background:var(--toast-ok);color:var(--toast-ok-fg)}
+.toast.bad{background:var(--toast-bad);color:var(--toast-bad-fg)}
+.toast.warn{background:var(--toast-warn);color:var(--toast-warn-fg)}
 .toast .x{margin-left:auto;background:none;border:0;color:inherit;opacity:.6;cursor:pointer;font-size:16px;line-height:1;padding:0 2px}
 .toast .x:hover{opacity:1}
 
@@ -515,7 +588,7 @@ tr.avg-row .avg-pct{font-size:10.5px;opacity:.75;font-variant-numeric:tabular-nu
 .viz-boundary-label{font-weight:700;fill:var(--body)}
 .viz-value{fill:var(--ink);font-family:var(--font);font-size:12px;font-weight:600}
 .viz-value.is-zero{fill:var(--faint);font-weight:500}
-.viz-slice-label{fill:#fff;font-family:var(--font);font-size:12px;font-weight:700}
+.viz-slice-label{fill:var(--on-brand);font-family:var(--font);font-size:12px;font-weight:700}
 .viz-donut-total{fill:var(--ink);font-family:var(--font);font-size:26px;font-weight:700}
 .viz-donut-caption{fill:var(--muted);font-family:var(--font);font-size:11px}
 
@@ -525,7 +598,7 @@ tr.avg-row .avg-pct{font-size:10.5px;opacity:.75;font-variant-numeric:tabular-nu
 
 .viz-tip{
   position:fixed;z-index:80;pointer-events:none;opacity:0;transition:opacity .12s;
-  background:var(--ink);color:#fff;font-size:12.5px;padding:6px 10px;border-radius:7px;
+  background:var(--ink);color:var(--canvas);font-size:12.5px;padding:6px 10px;border-radius:7px;
   box-shadow:var(--shadow);white-space:nowrap;
 }
 .viz-tip.is-open{opacity:1}
@@ -587,7 +660,7 @@ tr.avg-row .avg-pct{font-size:10.5px;opacity:.75;font-variant-numeric:tabular-nu
 .preview-tip,.preview-toolbar .hint{grid-column:1 / -1;margin:0;font-size:12.5px;line-height:1.5}
 /* Mirrors the placeholder highlight used inside the email preview, so the
    explanation and the thing it explains look the same. */
-.ph-chip{background:rgba(79,70,229,.12);border-radius:3px;padding:0 4px;color:var(--brand-700);font-weight:600}
+.ph-chip{background:var(--brand-50);border-radius:3px;padding:0 4px;color:var(--brand-700);font-weight:600}
 .preview-frame{width:100%;border:0;background:var(--email-bg);flex:1 1 auto;min-height:56vh}
 
 /* --- Marksheet: full-window mode ---------------------------------------- */
@@ -715,7 +788,7 @@ body.is-signed-out .app-main{display:none}
 .account-button[aria-expanded="true"]{background:var(--panel);border-color:var(--line-strong)}
 .account-avatar{
   display:grid;place-items:center;width:28px;height:28px;border-radius:50%;
-  background:var(--brand-600);color:#fff;font-size:11px;font-weight:700;letter-spacing:.02em;
+  background:var(--brand-600);color:var(--on-brand);font-size:11px;font-weight:700;letter-spacing:.02em;
 }
 .account-avatar.big{width:40px;height:40px;font-size:14px}
 .account-caret{

@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>EveryPupil — question-level analysis and personalised feedback for every pupil</title>
 <meta name="description" content="Mark the paper once. EveryPupil turns your marksheet into question-level analysis and a personalised feedback email for every pupil in the class. Built for UK secondary schools and trusts.">
-<meta name="theme-color" content="#4f46e5">
+<meta name="theme-color" content="#0f6f6c">
 
 <!-- Open Graph, so a link shared in a staff WhatsApp or a MAT newsletter looks right -->
 <meta property="og:type" content="website">
@@ -16,7 +16,7 @@
 <meta name="twitter:card" content="summary_large_image">
 
 <link rel="canonical" href="https://everypupil.com/">
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%234f46e5'/><text y='70' x='50' text-anchor='middle' font-size='58' font-family='system-ui' font-weight='700' fill='white'>E</text></svg>">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='24' fill='%230f6f6c'/><g fill='%23fbfcfc'><rect x='22' y='52' width='11' height='26' rx='5.5'/><rect x='39' y='30' width='11' height='48' rx='5.5'/><rect x='56' y='60' width='11' height='18' rx='5.5'/><rect x='73' y='42' width='11' height='36' rx='5.5' opacity='0.62'/></g></svg>">
 
 <style>
 /* ==========================================================================
@@ -28,16 +28,19 @@
    ========================================================================== */
 
 :root{
-  --brand-50:#eef2ff; --brand-100:#e0e7ff; --brand-200:#c7d2fe; --brand-300:#a5b4fc;
-  --brand-500:#6366f1; --brand-600:#4f46e5; --brand-700:#4338ca; --brand-900:#312e81;
-  --ink:#0f172a; --body:#334155; --muted:#64748b; --faint:#94a3b8;
-  --line:#e2e8f0; --line-strong:#cbd5e1;
-  --surface:#ffffff; --canvas:#f8fafc; --deep:#1e1b4b;
-  --ok:#059669; --ok-bg:#ecfdf5; --ok-line:#a7f3d0;
+  /* The same palette the app uses. See BRANDING.md: a desaturated teal on a
+     ground that is never pure white, chosen for people who will look at it
+     for hours. */
+  --brand-50:#eaf3f2; --brand-100:#d3e7e5; --brand-200:#a8cfcc; --brand-300:#7bb8b4;
+  --brand-500:#17847f; --brand-600:#0f6f6c; --brand-700:#0a5957; --brand-900:#06322f;
+  --ink:#16211f; --body:#3a4744; --muted:#5f6d6a; --faint:#87958f;
+  --line:#dbe2e0; --line-strong:#c2ccca;
+  --surface:#fbfcfc; --canvas:#f1f4f3; --deep:#06322f;
+  --ok:#18704a; --ok-bg:#eaf5ef; --ok-line:#b8ddc9;
   --radius:12px; --radius-lg:18px;
-  --shadow-sm:0 1px 2px rgba(15,23,42,.06);
-  --shadow:0 1px 3px rgba(15,23,42,.08), 0 12px 32px -16px rgba(15,23,42,.22);
-  --shadow-lg:0 24px 64px -28px rgba(15,23,42,.4);
+  --shadow-sm:0 1px 2px rgba(22,33,31,.05);
+  --shadow:0 1px 3px rgba(22,33,31,.07), 0 12px 32px -16px rgba(22,33,31,.2);
+  --shadow-lg:0 24px 64px -28px rgba(22,33,31,.36);
   --font:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
   --wrap:1120px;
 }
@@ -258,7 +261,9 @@ section{padding:80px 0}
 <header class="site-header">
   <div class="wrap">
     <a class="brand" href="/">
-      <span class="brand-mark" aria-hidden="true">E</span>
+      <span class="brand-mark" aria-hidden="true">
+        <svg viewBox="0 0 100 100" width="30" height="30"><rect width="100" height="100" rx="24" fill="#0f6f6c"/><g fill="#fbfcfc"><rect x="22" y="52" width="11" height="26" rx="5.5"/><rect x="39" y="30" width="11" height="48" rx="5.5"/><rect x="56" y="60" width="11" height="18" rx="5.5"/><rect x="73" y="42" width="11" height="36" rx="5.5" opacity=".62"/></g></svg>
+      </span>
       EveryPupil
     </a>
     <nav class="site-nav" aria-label="Main">
@@ -337,19 +342,19 @@ section{padding:80px 0}
     <div>
       <ul class="tick-list">
         <li>
-          <svg width="21" height="21" viewBox="0 0 20 20" fill="none" aria-hidden="true"><circle cx="10" cy="10" r="10" fill="#ecfdf5"/><path d="M6 10.2l2.6 2.6L14 7.4" stroke="#059669" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <svg width="21" height="21" viewBox="0 0 20 20" fill="none" aria-hidden="true"><circle cx="10" cy="10" r="10" fill="#eaf5ef"/><path d="M6 10.2l2.6 2.6L14 7.4" stroke="#18704a" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
           <span>Enter marks question by question, the way you already do</span>
         </li>
         <li>
-          <svg width="21" height="21" viewBox="0 0 20 20" fill="none" aria-hidden="true"><circle cx="10" cy="10" r="10" fill="#ecfdf5"/><path d="M6 10.2l2.6 2.6L14 7.4" stroke="#059669" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <svg width="21" height="21" viewBox="0 0 20 20" fill="none" aria-hidden="true"><circle cx="10" cy="10" r="10" fill="#eaf5ef"/><path d="M6 10.2l2.6 2.6L14 7.4" stroke="#18704a" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
           <span>Totals, grades and topic analysis calculated as you type</span>
         </li>
         <li>
-          <svg width="21" height="21" viewBox="0 0 20 20" fill="none" aria-hidden="true"><circle cx="10" cy="10" r="10" fill="#ecfdf5"/><path d="M6 10.2l2.6 2.6L14 7.4" stroke="#059669" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <svg width="21" height="21" viewBox="0 0 20 20" fill="none" aria-hidden="true"><circle cx="10" cy="10" r="10" fill="#eaf5ef"/><path d="M6 10.2l2.6 2.6L14 7.4" stroke="#18704a" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
           <span>Every pupil emailed their own strengths, gaps and next steps</span>
         </li>
         <li>
-          <svg width="21" height="21" viewBox="0 0 20 20" fill="none" aria-hidden="true"><circle cx="10" cy="10" r="10" fill="#ecfdf5"/><path d="M6 10.2l2.6 2.6L14 7.4" stroke="#059669" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <svg width="21" height="21" viewBox="0 0 20 20" fill="none" aria-hidden="true"><circle cx="10" cy="10" r="10" fill="#eaf5ef"/><path d="M6 10.2l2.6 2.6L14 7.4" stroke="#18704a" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
           <span>Parents too, if you want &mdash; and never if you don&rsquo;t</span>
         </li>
       </ul>
@@ -425,10 +430,10 @@ section{padding:80px 0}
 
       <div class="feature">
         <div class="feature-ico" aria-hidden="true">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 018 0v3"/></svg>
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
         </div>
-        <h3>Lock the paper while marking</h3>
-        <p>Whoever sets the assessment up can lock it. Colleagues enter marks freely, but nobody changes a question&rsquo;s marks halfway through and invalidates every total.</p>
+        <h3>Roles, not a shared password</h3>
+        <p>Teachers enter marks on the papers they have been given. Setting the questions, managing the class list and pressing send belong to admins. It is enforced in the database, so it holds however somebody arrives at it.</p>
       </div>
 
       <div class="feature">
@@ -445,6 +450,22 @@ section{padding:80px 0}
         </div>
         <h3>No blank means zero</h3>
         <p>An unmarked question is never silently counted as nought. A part-marked paper shows no total and no grade, and cannot be emailed by accident.</p>
+      </div>
+
+      <div class="feature">
+        <div class="feature-ico" aria-hidden="true">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>
+        </div>
+        <h3>Built for the third hour of marking</h3>
+        <p>Entering ninety pupils&rsquo; marks is not a five-minute job, so the colours are chosen for people doing it at length: an off-white ground rather than a lit-up white one, a mid-spectrum hue the eye focuses on with least effort, and a night mode for marking after dark. Every combination still meets WCAG AA &mdash; comfortable is not the same as washed out, and a mark misread is a mark entered wrong.</p>
+      </div>
+
+      <div class="feature">
+        <div class="feature-ico" aria-hidden="true">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="14" rx="2"/><path d="M2 8l10 6 10-6"/></svg>
+        </div>
+        <h3>Start in the classroom, finish in the staffroom</h3>
+        <p>Marks are held for the school, not in one browser, so a marksheet can be picked up on another computer a week later. Two people can mark the same paper at once without overwriting each other. Signing in is an emailed code &mdash; there is no password for a department to share, forget or write on a whiteboard.</p>
       </div>
 
     </div>
@@ -610,7 +631,12 @@ section{padding:80px 0}
 
       <details>
         <summary>How do you stop feedback going out before it is ready?</summary>
-        <p>Several ways, deliberately. A pupil whose paper is not fully marked has no total, no grade, and cannot be selected. Nothing sends until you press Send and confirm a dialogue that names how many emails are about to go. The person who set the assessment up can lock it with a PIN so nobody changes the paper or sends early. And you can preview the exact email any pupil will receive, built from their real marks.</p>
+        <p>Several ways, deliberately. A pupil whose paper is not fully marked has no total, no grade, and cannot be selected. Nothing sends until you press Send and confirm a dialogue that names how many emails are about to go. Only an admin can change the paper or send anything, so a colleague entering marks cannot send early even by accident. And you can preview the exact email any pupil will receive, built from their real marks.</p>
+      </details>
+
+      <details>
+        <summary>How do teachers sign in?</summary>
+        <p>They type their school email address and receive a six-digit code. There is no password to set, forget, reuse or share. Only addresses an admin at your school has added can get in at all, and removing somebody from the staff list ends their access immediately &mdash; on every device, without changing anything for anyone else.</p>
       </details>
 
       <details>

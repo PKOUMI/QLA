@@ -15,18 +15,25 @@
  *     screen readers and locked-down school mail clients often show
  */
 
+/*
+ * The same palette as the app, written out as plain hex.
+ *
+ * No CSS variables: mail clients strip <style> blocks, so every colour has to
+ * arrive inline on the element that uses it. If you change the brand in
+ * css/styles.css, change it here too — see BRANDING.md.
+ */
 const COLOURS = {
-  ink: '#0f172a',
-  body: '#334155',
-  muted: '#64748b',
-  line: '#e2e8f0',
-  panel: '#f8fafc',
-  brand: '#4f46e5',
-  brandDark: '#3730a3',
-  strong: '#059669',
-  strongBg: '#ecfdf5',
-  weak: '#d97706',
-  weakBg: '#fffbeb',
+  ink: '#16211f',
+  body: '#3a4744',
+  muted: '#5f6d6a',
+  line: '#dbe2e0',
+  panel: '#f1f4f3',
+  brand: '#0f6f6c',
+  brandDark: '#0a5957',
+  strong: '#18704a',
+  strongBg: '#eaf5ef',
+  weak: '#8a5a0b',
+  weakBg: '#fbf4e6',
 };
 
 function esc(value) {
@@ -365,7 +372,7 @@ export function renderFeedbackEmail(data, options = {}) {
             editable ? 'Topics this pupil did well on are listed here.' : '')}
           ${section(asHtml('ebiHeading'), COLOURS.weak, COLOURS.weakBg, ebiRows, editable ? 'ebiHeading' : '',
             editable ? 'Topics to work on are listed here.' : '')}
-          ${section(asHtml('focusHeading'), COLOURS.brand, '#eef2ff', focusRows, editable ? 'focusHeading' : '',
+          ${section(asHtml('focusHeading'), COLOURS.brand, '#eaf3f2', focusRows, editable ? 'focusHeading' : '',
             editable ? 'Reteach links for the weakest topics are listed here.' : '')}
           ${nothingFlagged ? `
           <tr><td style="padding:0 0 16px 0;font-size:14px;line-height:22px;color:${COLOURS.muted};">
