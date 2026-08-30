@@ -367,10 +367,35 @@ function onMarkBlur(event, pupil, question, cell) {
   toast(rejectionMessage(typed, question, check.error), 'warn', 6000);
 }
 
-/** Arrow keys and Enter move around the grid, like a spreadsheet. */
+function focusCell(event, rowIndex, colIndex) {
+  const target = document.querySelector(
+    `.mark-input[data-row="${rowIndex}"][data-col="${colIndex}"]`,
+  );
+  if (!target) return false;
+  event.preventDefault();
+  target.focus();
+  return true;
+}
+
+/**
+ * Arrow keys move around the grid, like a spreadsheet. Enter does something
+ * different, and deliberately so.
+ *
+ * Down one cell is already ArrowDown's job, so making Enter a second way to do
+ * the same thing wastes the most reachable key on the keyboard. Marking runs
+ * along a paper and then starts the next child, so Enter finishes the pupil:
+ * it jumps to the first question of the next one. Shift and Enter goes back to
+ * the first question of the pupil above, which is what you want the moment you
+ * realise you have started the wrong row.
+ */
 function onMarkKey(event, rowIndex, colIndex) {
+  if (event.key === 'Enter') {
+    focusCell(event, rowIndex + (event.shiftKey ? -1 : 1), 0);
+    return;
+  }
+
   const moves = {
-    ArrowUp: [-1, 0], ArrowDown: [1, 0], Enter: [1, 0],
+    ArrowUp: [-1, 0], ArrowDown: [1, 0],
     ArrowLeft: [0, -1], ArrowRight: [0, 1],
   };
   const move = moves[event.key];
@@ -384,13 +409,7 @@ function onMarkKey(event, rowIndex, colIndex) {
     else return;
   }
 
-  const target = document.querySelector(
-    `.mark-input[data-row="${rowIndex + move[0]}"][data-col="${colIndex + move[1]}"]`,
-  );
-  if (target) {
-    event.preventDefault();
-    target.focus();
-  }
+  focusCell(event, rowIndex + move[0], colIndex + move[1]);
 }
 
 /* --- Live totals without a full re-render -------------------------------- */

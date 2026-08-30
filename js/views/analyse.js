@@ -15,7 +15,7 @@ import {
 import { el, clear, $, plural } from '../ui.js';
 import {
   mountChart, columnChart, donutChart, histogram, meterList,
-  legend, dataTable, rampColour,
+  legend, dataTable, rampColour, binSizeOptions, autoBinSize,
 } from '../charts.js';
 
 /* --- Card scaffolding ---------------------------------------------------- */
@@ -91,6 +91,31 @@ function customisePanel(assessment) {
     update((a) => { a.settings.analyse.topicSort = topicSort.value; });
   });
 
+  // Bar width on the mark distribution. Only offered when the paper is big
+  // enough for the choice to mean anything, and only widths that fit.
+  const possible = totalPossible(assessment);
+  const steps = binSizeOptions(possible);
+  let binSize = null;
+  if (steps.length > 1) {
+    const auto = autoBinSize(possible);
+    binSize = el('select', { class: 'input input-sm', id: 'mark-bin-size' },
+      el('option', {
+        value: 'auto',
+        text: `Automatic (${auto} ${auto === 1 ? 'mark' : 'marks'})`,
+        selected: !steps.includes(Number(prefs.markBinSize)),
+      }),
+      steps.map((step) => el('option', {
+        value: String(step),
+        text: step === 1 ? 'Every mark' : `${step} marks`,
+        selected: Number(prefs.markBinSize) === step,
+      })));
+    binSize.addEventListener('change', () => {
+      update((a) => {
+        a.settings.analyse.markBinSize = binSize.value === 'auto' ? 'auto' : Number(binSize.value);
+      });
+    });
+  }
+
   return el('details', { class: 'customise', open: false },
     el('summary', {}, 'Customise this page'),
     el('div', { class: 'customise-body' },
@@ -105,7 +130,9 @@ function customisePanel(assessment) {
         el('label', { class: 'field field-sm' },
           el('span', { class: 'label', text: 'Grade distribution as' }), gradeType),
         el('label', { class: 'field field-sm' },
-          el('span', { class: 'label', text: 'Order topics by' }), topicSort)),
+          el('span', { class: 'label', text: 'Order topics by' }), topicSort),
+        binSize ? el('label', { class: 'field field-sm' },
+          el('span', { class: 'label', text: 'Marks per bar' }), binSize) : null),
     ));
 }
 
@@ -233,14 +260,17 @@ function questionCard(assessment) {
 function distributionCard(assessment) {
   const totals = completedTotals(assessment);
   const possible = totalPossible(assessment);
+  const chosen = assessment.settings.analyse.markBinSize;
+  const step = Number(chosen) > 0 ? Number(chosen) : autoBinSize(possible);
   return chartCard({
     id: 'spread',
     title: 'Mark distribution',
-    hint: 'Where the class landed, with your grade boundaries marked on.',
+    hint: `Where the class landed, with your grade boundaries marked on. Each bar covers ${step === 1 ? '1 mark' : `${step} marks`} — change that under “Customise this page”.`,
     drawChart: (width) => histogram(width, {
       values: totals,
       totalMarks: possible,
       boundaries: assessment.gradeBoundaries,
+      binSize: Number(chosen) > 0 ? Number(chosen) : null,
     }),
     tableHeaders: ['Pupil', 'Total', 'Grade'],
     tableRows: () => allResults(assessment)

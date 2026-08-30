@@ -20,6 +20,7 @@ import { signInErrorMessage, normaliseEmail, looksLikeEmail } from '../js/auth.j
 import { setRole, canManage } from '../js/roles.js';
 import { describePeopleError } from '../js/people.js';
 import { verifySession, describeSessionFailure, sessionConfigured } from '../api/_lib/session.js';
+import { autoBinSize, binSizeOptions } from '../js/charts.js';
 
 let passed = 0;
 let failed = 0;
@@ -1027,6 +1028,48 @@ test('an unrecognised provider error is passed on rather than swallowed', () => 
 
 test('an error with no message at all still says something useful', () => {
   assert.match(signInErrorMessage({}, 'send'), /Something went wrong/);
+});
+
+/* --- Mark distribution bar width ---------------------------------------- */
+
+test('automatic bar width aims for about a dozen bars', () => {
+  // 90 marks in tens is nine bars; 30 in twos is fifteen. Both are readable.
+  assert.equal(autoBinSize(90), 10);
+  assert.equal(autoBinSize(30), 5);
+  assert.equal(autoBinSize(12), 1);
+});
+
+test('a paper too small to bin at all still gets a width', () => {
+  assert.equal(autoBinSize(0), 1);
+  assert.equal(autoBinSize(1), 1);
+});
+
+test('bar widths on offer never draw more bars than the chart can show', () => {
+  for (const total of [12, 30, 90, 200, 600]) {
+    for (const step of binSizeOptions(total)) {
+      assert.ok(Math.ceil(total / step) <= 80,
+        `${total} marks in bars of ${step} would draw ${Math.ceil(total / step)} bars`);
+    }
+  }
+});
+
+test('every mark is offered as a bar width on a small paper and refused on a huge one', () => {
+  assert.ok(binSizeOptions(30).includes(1), '30 marks should offer one bar per mark');
+  assert.ok(!binSizeOptions(300).includes(1), '300 marks should not offer 300 bars');
+});
+
+test('a bar width as wide as the whole paper is not offered', () => {
+  // One bar covering everything is a chart that says nothing.
+  assert.ok(!binSizeOptions(20).includes(20));
+  assert.ok(!binSizeOptions(20).includes(25));
+});
+
+test('narrower widths than automatic are always available', () => {
+  for (const total of [30, 60, 90, 120]) {
+    const options = binSizeOptions(total);
+    assert.ok(options.some((step) => step < autoBinSize(total)),
+      `${total} marks offers nothing finer than the automatic ${autoBinSize(total)}`);
+  }
 });
 
 /* ================================ report ================================ */

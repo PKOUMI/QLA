@@ -166,6 +166,52 @@ await sleep(700);
 check('and nothing was written to storage', (await storedMark()) === 2,
   `stored: ${JSON.stringify(await storedMark())}`);
 
+console.log('\n7. Enter finishes the pupil; the down arrow moves down a column');
+
+/** Press a key on a chosen cell and report where the focus ended up. */
+const pressOn = (row, col, key, shift = false) => page.evaluate(`(() => {
+  const from = document.querySelector('.mark-input[data-row="${row}"][data-col="${col}"]');
+  if (!from) return { error: 'no such cell' };
+  from.focus();
+  const event = new KeyboardEvent('keydown', {
+    key: ${JSON.stringify(key)}, shiftKey: ${shift}, bubbles: true, cancelable: true,
+  });
+  from.dispatchEvent(event);
+  const now = document.activeElement;
+  return {
+    row: Number(now.dataset.row), col: Number(now.dataset.col),
+    prevented: event.defaultPrevented,
+  };
+})()`);
+
+const rows = await page.evaluate(`document.querySelectorAll('#marksheet-body tr').length`);
+const cols = await page.evaluate(`document.querySelectorAll('#marksheet-body tr:first-child .mark-input').length`);
+check('the grid has several pupils and several questions', rows > 2 && cols > 2, `${rows} x ${cols}`);
+
+const entered = await pressOn(1, 2, 'Enter');
+check('Enter lands on the next pupil', entered.row === 2, JSON.stringify(entered));
+check('and on that pupil first question, not the column it started in',
+  entered.col === 0, JSON.stringify(entered));
+check('and the browser default is stopped', entered.prevented === true);
+
+const back = await pressOn(2, 0, 'Enter', true);
+check('Shift and Enter goes back to the pupil above', back.row === 1 && back.col === 0,
+  JSON.stringify(back));
+
+const down = await pressOn(1, 2, 'ArrowDown');
+check('the down arrow still moves down its own column', down.row === 2 && down.col === 2,
+  JSON.stringify(down));
+
+const last = await pressOn(rows - 1, 1, 'Enter');
+check('Enter on the last pupil stays put rather than losing focus',
+  last.row === rows - 1 && last.col === 1, JSON.stringify(last));
+check('and does not swallow the key when there is nowhere to go',
+  last.prevented === false, JSON.stringify(last));
+
+const first = await pressOn(0, 1, 'Enter', true);
+check('Shift and Enter on the first pupil stays put too',
+  first.row === 0 && first.col === 1, JSON.stringify(first));
+
 console.log(`\n${pass} passed, ${fail} failed`);
 page.close();
 stopAll();

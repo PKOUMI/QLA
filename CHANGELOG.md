@@ -1,5 +1,43 @@
 # Changelog
 
+## v6 — change request of 30 August 2026
+
+### Marksheet
+- **Enter now goes to the first question of the next pupil.** It used to move
+  down one cell, which is what the down arrow already does, so the most
+  reachable key on the keyboard was doing a job that was already covered.
+  Marking runs along a paper and then starts the next child, so Enter now
+  finishes the pupil. **Shift and Enter** goes back to the first question of the
+  pupil above, for the moment you realise you started on the wrong row. On the
+  last pupil Enter does nothing rather than losing your place. The legend under
+  the grid already promised this; the code now matches it.
+
+### Analyse
+- **Mark distribution: choose how many marks each bar covers.** Under
+  "Customise this page" there is now a **Marks per bar** setting: automatic, or
+  a fixed width down to one bar per mark. Automatic still aims for roughly a
+  dozen bars, which is right for a first look, but hides the shape when a class
+  is bunched inside a single ten-mark column. Only widths that fit are offered,
+  so the chart can never become a row of hairlines, and the setting is saved
+  with the assessment like the other chart choices.
+- Single-mark bars read as "37 marks: 4 pupils" rather than as a range.
+
+### Documentation
+- **Deployment guide, new step 7f: receiving email.** Verifying a domain in
+  Resend only lets you send from it. Receiving needs an MX record, and
+  `everypupil.com` currently has none, so anything sent to
+  `hello@everypupil.com` bounces. The new section covers Cloudflare Email
+  Routing, which addresses are worth having, and the part people forget, which
+  is that forwarding does not let you reply from the address.
+
+### Marketing page
+- A statement that **there is no AI in the product**, as a feature card, in the
+  data protection grid, and as the first question in the FAQ. It says what is
+  actually true: no AI feature exists, no pupil data is sent to any AI service,
+  and nothing entered is used to train a model. It also commits to any future
+  AI feature being off by default and described on the page before it ships.
+
+
 ## v5 — change request of 22 August 2026
 
 ### Marksheet
@@ -534,3 +572,18 @@ third of its marking and the rest showing blank. The connection check reported
 - **Fixed:** the wheel changed the mark under the pointer. Scrolling to find a
   pupil is the reason anybody touches the wheel on a marksheet, and the cost
   of the old behaviour was a silently altered mark on a real child's paper.
+
+## Marketing copy, rewritten
+
+- Every em dash gone from the visible text, along with the constructions that
+  travel with them: "not just X", "precisely so", "deliberately", and the
+  neat closing flourish on the safeguarding answer.
+- Long compound sentences split. Mean sentence length is now under fourteen
+  words, with a real spread rather than a uniform middle.
+- **Fixed, and this one was a factual error, not a stylistic one:** the "Where
+  we actually are" note still told schools that accounts and UK-hosted storage
+  were "being built now" and that the app "keeps everything in the teacher's
+  own browser". Both shipped weeks ago. It now says what is true, and names
+  what genuinely is still missing: no DPIA, no supplier security
+  questionnaire, no Cyber Essentials.
+- No claim, price or promise changed anywhere else.

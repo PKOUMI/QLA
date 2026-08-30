@@ -425,7 +425,52 @@ FROM_EMAIL=feedback@yourdomain.co.uk
 
 and redeploy. Send yourself another test.
 
-### 7f. A note on subdomains for sending
+### 7f. Receiving email, which is a separate job from sending
+
+Verifying a domain in Resend lets you **send** from it. It does not let you
+**receive** anything. Those are different DNS records: sending needs SPF, DKIM
+and DMARC; receiving needs an **MX** record, and a domain with no MX record
+bounces every message sent to it.
+
+So an address like `hello@everypupil.com` on a marketing page does nothing at
+all until you set up inbound routing, and the school that emails it gets a
+delivery failure rather than a reply.
+
+**The free way to fix it,** if the domain's DNS is at Cloudflare:
+
+1. Cloudflare dashboard → your domain → **Email** → **Email Routing** → Get
+   started.
+2. Add the destination address you actually read (a personal or school inbox)
+   and click the verification link Cloudflare emails you.
+3. Add a custom address: `hello@` → forward to that destination.
+4. Accept the MX and TXT records Cloudflare offers to add. This is the step
+   that makes the address exist.
+5. Send yourself a test message and confirm it arrives.
+
+Worth adding at the same time, because they cost nothing and schools and
+mail providers look for them:
+
+| Address | Why |
+| --- | --- |
+| `hello@` | The one on the marketing page |
+| `support@` | Where a school in trouble will write, whether you advertise it or not |
+| `dpo@` or `privacy@` | Data protection enquiries. A DPO will look for one |
+| `abuse@` and `postmaster@` | Conventional, and some providers check |
+
+**Replying is the part people forget.** Cloudflare Email Routing forwards
+inbound mail only; it does not let you send *as* `hello@everypupil.com`. To
+reply from that address, either add it as a "send mail as" identity in Gmail
+using SMTP credentials from your email provider, or keep a proper mailbox
+(Google Workspace, Microsoft 365, Fastmail) for the human addresses and leave
+Resend or SES doing only the automated sending. Replying from a personal
+address to a school that wrote to `hello@` looks exactly as unfinished as it is.
+
+**Do not point the sending domain's MX at a mailbox provider by accident.** If
+you send from `feedback.everypupil.com`, that subdomain's records belong to
+Resend or SES; the apex `everypupil.com` is where routing and any real mailbox
+live. Keeping them separate is the point of 7g below.
+
+### 7g. A note on subdomains for sending
 
 Consider sending from a subdomain — `mail.yourdomain.co.uk` or
 `feedback.yourdomain.co.uk` — rather than the apex. If a deliverability problem

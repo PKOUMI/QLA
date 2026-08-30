@@ -319,7 +319,40 @@ export function meterList({ rows, emptyMessage = 'Nothing to show yet.' }) {
 
 /* --- 4. Histogram (mark distribution with boundaries) ------------------- */
 
-export function histogram(width, { values, totalMarks, boundaries = [], height = 280 }) {
+/**
+ * How wide each bar is, in marks.
+ *
+ * "Auto" aims for roughly a dozen bars, which is the right answer for a first
+ * look at a paper. It is the wrong answer when a class is bunched: a 90 mark
+ * paper in bars of 10 can show one tall column and tell you nothing about the
+ * shape inside it. So a teacher can ask for narrower bars and see the spread
+ * that the tidy version smoothed away.
+ *
+ * Anything that would draw more than MAX_BINS bars is refused and falls back to
+ * automatic, because a chart of hairlines is not a chart.
+ */
+const MAX_BINS = 80;
+const AUTO_STEPS = [1, 2, 5, 10, 20, 25, 50];
+
+export function autoBinSize(totalMarks) {
+  const rawWidth = totalMarks / 12;
+  return AUTO_STEPS.find((s) => s >= rawWidth) || 100;
+}
+
+/** The bar widths worth offering for this paper, narrowest first. */
+export function binSizeOptions(totalMarks) {
+  if (!(totalMarks > 0)) return [];
+  return AUTO_STEPS.filter((step) => Math.ceil(totalMarks / step) <= MAX_BINS && step < totalMarks);
+}
+
+function chosenBinSize(totalMarks, binSize) {
+  const requested = Number(binSize);
+  if (!Number.isFinite(requested) || requested <= 0) return autoBinSize(totalMarks);
+  if (Math.ceil(totalMarks / requested) > MAX_BINS) return autoBinSize(totalMarks);
+  return requested;
+}
+
+export function histogram(width, { values, totalMarks, boundaries = [], height = 280, binSize = null }) {
   const padding = { top: 30, right: 14, bottom: 54, left: 34 };
   const plotW = Math.max(40, width - padding.left - padding.right);
   const plotH = height - padding.top - padding.bottom;
@@ -329,9 +362,7 @@ export function histogram(width, { values, totalMarks, boundaries = [], height =
   });
   if (totalMarks <= 0) return root;
 
-  // Aim for roughly a dozen bins, snapped to a tidy width.
-  const rawWidth = totalMarks / 12;
-  const step = [1, 2, 5, 10, 20, 25, 50].find((s) => s >= rawWidth) || 100;
+  const step = chosenBinSize(totalMarks, binSize);
   const binCount = Math.ceil(totalMarks / step);
   const bins = Array.from({ length: binCount }, (_, i) => ({
     from: i * step, to: Math.min(totalMarks, (i + 1) * step - 1), count: 0,
@@ -356,9 +387,11 @@ export function histogram(width, { values, totalMarks, boundaries = [], height =
   bins.forEach((bin, index) => {
     if (bin.count === 0) return;
     const h = (bin.count / axisMax) * plotH;
-    const x = padding.left + binW * index + 1;      // 2px total gap between bins
-    const bar = svg('path', { d: barPath(x, padding.top + plotH - h, Math.max(2, binW - 2), h, 4), class: 'viz-bar' });
-    attachTip(bar, `${bin.from}–${bin.to} marks: ${bin.count} pupil${bin.count === 1 ? '' : 's'}`);
+    const x = padding.left + binW * index + (binW > 6 ? 1 : 0.5);
+    const barW = Math.max(2, binW - (binW > 6 ? 2 : 1));
+    const bar = svg('path', { d: barPath(x, padding.top + plotH - h, barW, h, Math.min(4, barW / 2)), class: 'viz-bar' });
+    const range = bin.from === bin.to ? `${bin.from} mark${bin.from === 1 ? '' : 's'}` : `${bin.from}–${bin.to} marks`;
+    attachTip(bar, `${range}: ${bin.count} pupil${bin.count === 1 ? '' : 's'}`);
     root.appendChild(bar);
   });
 

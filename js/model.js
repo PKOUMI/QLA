@@ -97,6 +97,9 @@ export function newAssessment(overrides = {}) {
         },
         gradeChartType: 'bar', // 'bar' | 'donut'
         topicSort: 'weakest',  // 'weakest' | 'strongest' | 'name'
+        // Bar width on the mark distribution, in marks. 'auto' picks a tidy
+        // width for the paper; a number asks for exactly that many marks.
+        markBinSize: 'auto',
       },
     },
     // Admin overrides for the wording of every feedback email.
