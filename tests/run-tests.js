@@ -13,7 +13,8 @@ import {
   completedTotals, markProgress, formatMark,
 } from '../js/grades.js';
 import { buildPupilFeedback, pupilSendStatus } from '../js/feedback-engine.js';
-import { validateMark, validateAssessment, isValidEmail, isValidUrl, csvSafeCell } from '../js/validation.js';
+import { validateMark, validateAssessment, isValidEmail, isValidUrl, csvSafeCell,
+  isUnreachableAddress, countUnreachable } from '../js/validation.js';
 import { parsePupilCsv, parseCsv, toCsv } from '../js/csv.js';
 import { renderFeedbackEmail, DEFAULT_EMAIL_TEXT } from '../shared/email-template.js';
 import { signInErrorMessage, normaliseEmail, looksLikeEmail } from '../js/auth.js';
@@ -1070,6 +1071,56 @@ test('narrower widths than automatic are always available', () => {
     assert.ok(options.some((step) => step < autoBinSize(total)),
       `${total} marks offers nothing finer than the automatic ${autoBinSize(total)}`);
   }
+});
+
+/* --- Addresses that can never receive anything -------------------------- */
+
+test('reserved top level domains are recognised as undeliverable', () => {
+  for (const address of [
+    '27smithj@northgate-academy.invalid',
+    'a.parent@homemail.invalid',
+    'someone@example',
+    'user@my.test',
+    'root@localhost',
+    'HELLO@THING.INVALID',
+  ]) {
+    assert.equal(isUnreachableAddress(address), true, address);
+  }
+});
+
+test('real addresses are not flagged', () => {
+  for (const address of [
+    'p.koumi@stockgrn.bham.sch.uk',
+    'pupil@school.org.uk',
+    'someone@example.com',      // .com is real, however example-ish it reads
+    'a@invalid-school.co.uk',   // "invalid" in the name, not the TLD
+    'b@test-academy.sch.uk',
+  ]) {
+    assert.equal(isUnreachableAddress(address), false, address);
+  }
+});
+
+test('nonsense in, false out, rather than a crash', () => {
+  for (const value of [null, undefined, '', '   ', 'not-an-email', '@', 'a@']) {
+    assert.equal(isUnreachableAddress(value), false, JSON.stringify(value));
+  }
+});
+
+test('the count is of distinct addresses, with a few named', () => {
+  const summary = countUnreachable([
+    'a@x.invalid', 'a@x.invalid', 'B@X.INVALID',   // one address, three ways
+    'b@y.invalid', 'c@z.invalid', 'd@w.invalid',
+    'real@school.sch.uk',
+  ]);
+  assert.equal(summary.count, 5);
+  assert.equal(summary.examples.length, 3);
+  assert.ok(summary.examples.every(isUnreachableAddress));
+});
+
+test('a class of real addresses raises nothing', () => {
+  assert.deepEqual(countUnreachable(['a@school.sch.uk', 'b@school.sch.uk']), { count: 0, examples: [] });
+  assert.deepEqual(countUnreachable([]), { count: 0, examples: [] });
+  assert.deepEqual(countUnreachable(undefined), { count: 0, examples: [] });
 });
 
 /* ================================ report ================================ */

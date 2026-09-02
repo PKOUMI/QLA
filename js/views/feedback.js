@@ -8,7 +8,7 @@
 import { canManage } from '../roles.js';
 import { buildPupilFeedback, pupilSendStatus } from '../feedback-engine.js';
 import { allResults, formatMark } from '../grades.js';
-import { validateAssessment } from '../validation.js';
+import { validateAssessment, countUnreachable } from '../validation.js';
 import { renderFeedbackEmail, DEFAULT_EMAIL_TEXT } from '../../shared/email-template.js';
 import { newId } from '../model.js';
 import { toCsv } from '../csv.js';
@@ -525,6 +525,21 @@ async function handleSend() {
         el('span', { text: `Last sent ${new Date(assessment.sendLog[previous - 1].at).toLocaleString('en-GB')}. Sending again will deliver a second copy.` })))
     : null;
 
+  // Addresses at a reserved top level domain cannot arrive, and every one is a
+  // hard bounce against the sending account that also carries the sign-in
+  // codes. Say so before the send rather than in the results afterwards.
+  const unreachable = countUnreachable(messages.map((m) => m.to));
+  const bounceWarning = unreachable.count > 0
+    ? el('div', { class: 'callout callout-warn', style: 'margin-top:12px' },
+      el('span', { class: 'ico', text: '⚠️' }),
+      el('div', {},
+        el('strong', { text: `${plural(unreachable.count, 'address')} cannot receive email` }),
+        el('span', {
+          text: `${unreachable.examples.join(', ')}${unreachable.count > unreachable.examples.length ? ' and others' : ''} use a reserved domain that never resolves, so these will bounce. `
+            + 'That is expected of the sample class. Send a few rather than the whole year group, because bounces count against the account that also sends your sign-in codes.',
+        })))
+    : null;
+
   const confirmed = await confirmDialog({
     title: 'Send feedback now?',
     message: el('div', {},
@@ -536,7 +551,7 @@ async function handleSend() {
         '.'),
       el('p', { style: 'margin:0 0 10px', text: `That is ${plural(messages.length, 'email')} in total. Emails cannot be recalled once they are sent.` }),
       el('p', { class: 'hint', style: 'margin:0', text: 'Check the marks are final and that you are happy with the wording before continuing.' }),
-      warning),
+      warning, bounceWarning),
     confirmLabel: `Yes, send ${plural(messages.length, 'email')}`,
   });
   if (!confirmed) return;

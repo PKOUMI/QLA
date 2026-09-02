@@ -181,3 +181,37 @@ export function validateAssessment(assessment) {
   for (const list of Object.values(bySection)) errors.push(...list);
   return { errors, warnings, bySection, isValid: errors.length === 0 };
 }
+
+/* --- Addresses that can never be delivered to ---------------------------- */
+
+/**
+ * Top level domains that are reserved and can never be registered, so an
+ * address using one is guaranteed to fail. RFC 2606 reserves `.test`,
+ * `.example` and `.invalid`; RFC 6761 adds `.localhost`.
+ *
+ * This matters more than it looks. Every message to one of these is a hard
+ * bounce, and email providers judge a sender on the proportion of their mail
+ * that bounces: Resend suspends sending above four percent. A single afternoon
+ * spent testing on the sample class can therefore stop the sign-in codes
+ * working for a real school, because those go out through the same account.
+ *
+ * The app warns rather than refuses. Testing with unreachable addresses is a
+ * sensible thing to do, in small numbers, and it is how the failure reporting
+ * gets exercised at all.
+ */
+export const RESERVED_TLDS = ['invalid', 'test', 'example', 'localhost'];
+
+export function isUnreachableAddress(email) {
+  const domain = String(email || '').trim().toLowerCase().split('@')[1];
+  if (!domain) return false;
+  const tld = domain.split('.').pop();
+  return RESERVED_TLDS.includes(tld);
+}
+
+/** How many of these messages can never arrive, and a sample to show. */
+export function countUnreachable(addresses) {
+  const bad = [...new Set(
+    (addresses || []).filter(isUnreachableAddress).map((a) => String(a).trim().toLowerCase()),
+  )];
+  return { count: bad.length, examples: bad.slice(0, 3) };
+}

@@ -22,6 +22,16 @@
   with the assessment like the other chart choices.
 - Single-mark bars read as "37 marks: 4 pupils" rather than as a range.
 
+### Feedback
+- **A warning before sending to addresses that cannot receive anything.** The
+  confirmation dialogue now says how many recipients are at a reserved domain
+  (`.invalid`, `.test`, `.example`, `.localhost`), names a few, and explains
+  why it matters: every one is a hard bounce, and email providers suspend
+  sending above a bounce rate of about four percent. The same account carries
+  the sign-in codes, so a big test send against the sample class can stop real
+  staff signing in. It warns rather than refuses, because testing on
+  unreachable addresses in small numbers is the right thing to do.
+
 ### Documentation
 - **Deployment guide, new step 7f: receiving email.** Verifying a domain in
   Resend only lets you send from it. Receiving needs an MX record, and
